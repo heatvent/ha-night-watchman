@@ -10,12 +10,18 @@
           "interval": "Minutes between rounds",
           "quiet_minutes": "Quiet period",
           "notify_service": "Notify service",
-          "activity_entities": "Activity devices",
-          "turn_off_entities": "Turn off when a round runs"
+          "activity_lights": "Lights to monitor",
+          "activity_motion": "Motion sensors to monitor",
+          "activity_doors": "Doors to monitor",
+          "include_activity_lights": "Also turn off the monitored lights",
+          "turn_off_entities": "Other lights to turn off"
         },
         "data_description": {
-          "activity_entities": "Motion sensors and room lights. A change during the quiet period skips the round. Switches that stay on should not be selected.",
-          "turn_off_entities": "Hubitat room lights that should be switched off. Do not include power strips, washer, dryer, or indicator LEDs.",
+          "activity_lights": "A recent on or off change skips the round.",
+          "activity_motion": "A recent motion change skips the round.",
+          "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
+          "include_activity_lights": "Adds every light from Lights to monitor to the turn-off list.",
+          "turn_off_entities": "Extra lights to turn off, including ones you are not monitoring.",
           "notify_service": "Service under Developer Tools, for example phones_group."
         }
       }
@@ -69,8 +75,11 @@
           "interval": "Minutes between rounds",
           "quiet_minutes": "Quiet period",
           "notify_service": "Notify service",
-          "activity_entities": "Activity devices",
-          "turn_off_entities": "Turn off when a round runs"
+          "activity_lights": "Lights to monitor",
+          "activity_motion": "Motion sensors to monitor",
+          "activity_doors": "Doors to monitor",
+          "include_activity_lights": "Also turn off the monitored lights",
+          "turn_off_entities": "Other lights to turn off"
         }
       }
     }

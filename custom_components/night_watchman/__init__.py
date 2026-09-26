@@ -12,8 +12,12 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_ACTIVITY_DOORS,
     CONF_ACTIVITY_ENTITIES,
+    CONF_ACTIVITY_LIGHTS,
+    CONF_ACTIVITY_MOTION,
     CONF_CONTACT_ENTITY,
+    CONF_INCLUDE_ACTIVITY_LIGHTS,
     CONF_END,
     CONF_INTERVAL,
     CONF_LOCK_ENTITY,
@@ -48,6 +52,42 @@ def _minutes(value: Any) -> int:
     return hour * 60 + minute
 
 
+def _as_list(value: Any) -> list[str]:
+    if not value:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return list(value)
+
+
+def _activity_entities(options: dict[str, Any]) -> list[str]:
+    entities = []
+    for key in (CONF_ACTIVITY_LIGHTS, CONF_ACTIVITY_MOTION, CONF_ACTIVITY_DOORS):
+        entities.extend(_as_list(options.get(key)))
+    if not entities:
+        entities.extend(_as_list(options.get(CONF_ACTIVITY_ENTITIES)))
+    return entities
+
+
+def _turn_off_entities(options: dict[str, Any]) -> list[str]:
+    entities: list[str] = []
+    if options.get(CONF_INCLUDE_ACTIVITY_LIGHTS, True):
+        entities.extend(_as_list(options.get(CONF_ACTIVITY_LIGHTS)))
+        entities.extend(
+            entity_id
+            for entity_id in _as_list(options.get(CONF_ACTIVITY_ENTITIES))
+            if entity_id.startswith("light.")
+        )
+    entities.extend(_as_list(options.get(CONF_TURN_OFF_ENTITIES)))
+    unique: list[str] = []
+    seen: set[str] = set()
+    for entity_id in entities:
+        if entity_id not in seen:
+            seen.add(entity_id)
+            unique.append(entity_id)
+    return unique
+
+
 def _changed_recently(hass: HomeAssistant, entity_id: str, quiet: timedelta, now: datetime) -> bool:
     state = hass.states.get(entity_id)
     if state is None or state.last_changed is None:
@@ -58,7 +98,7 @@ def _changed_recently(hass: HomeAssistant, entity_id: str, quiet: timedelta, now
 async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> None:
     options = _settings(entry)
     quiet = timedelta(minutes=int(options.get(CONF_QUIET_MINUTES, 45)))
-    activity = list(options.get(CONF_ACTIVITY_ENTITIES) or [])
+    activity = _activity_entities(options)
     if any(_changed_recently(hass, entity_id, quiet, now) for entity_id in activity):
         return
 
@@ -90,7 +130,7 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
         locked.append(name)
 
     turned_off: list[str] = []
-    for entity_id in options.get(CONF_TURN_OFF_ENTITIES) or []:
+    for entity_id in _turn_off_entities(options):
         state = hass.states.get(entity_id)
         if state is None or state.state != STATE_ON:
             continue

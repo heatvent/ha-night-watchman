@@ -18,9 +18,12 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
-    CONF_ACTIVITY_ENTITIES,
+    CONF_ACTIVITY_DOORS,
+    CONF_ACTIVITY_LIGHTS,
+    CONF_ACTIVITY_MOTION,
     CONF_CONTACT_ENTITY,
     CONF_END,
+    CONF_INCLUDE_ACTIVITY_LIGHTS,
     CONF_INTERVAL,
     CONF_LOCK_ENTITY,
     CONF_NOTIFY_SERVICE,
@@ -50,14 +53,31 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_NOTIFY_SERVICE, default=defaults.get(CONF_NOTIFY_SERVICE, "phones_group")
             ): selector.TextSelector(),
             vol.Required(
-                CONF_ACTIVITY_ENTITIES, default=defaults.get(CONF_ACTIVITY_ENTITIES, [])
+                CONF_ACTIVITY_LIGHTS, default=defaults.get(CONF_ACTIVITY_LIGHTS, [])
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="light", multiple=True)
+            ),
+            vol.Required(
+                CONF_ACTIVITY_MOTION, default=defaults.get(CONF_ACTIVITY_MOTION, [])
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
-                    domain=["binary_sensor", "light"],
+                    domain="binary_sensor", device_class="motion", multiple=True
+                )
+            ),
+            vol.Required(
+                CONF_ACTIVITY_DOORS, default=defaults.get(CONF_ACTIVITY_DOORS, [])
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="binary_sensor",
+                    device_class=["door", "garage_door", "opening", "window"],
                     multiple=True,
                 )
             ),
             vol.Required(
+                CONF_INCLUDE_ACTIVITY_LIGHTS,
+                default=defaults.get(CONF_INCLUDE_ACTIVITY_LIGHTS, True),
+            ): selector.BooleanSelector(),
+            vol.Optional(
                 CONF_TURN_OFF_ENTITIES, default=defaults.get(CONF_TURN_OFF_ENTITIES, [])
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="light", multiple=True)

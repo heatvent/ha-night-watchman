@@ -31,7 +31,7 @@ When a round runs:
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.2`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.3`, …), not the tip of `main`.
 
 ### Manual
 
@@ -47,8 +47,10 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Minutes between rounds | How often a round is attempted inside that window. Default is 60. |
 | Quiet period | How long every activity device must stay unchanged before a round proceeds. Default is 45 minutes. |
 | Notify service | Home Assistant notify service, for example `phones_group`. A message is sent only when something was locked, turned off, or left open. |
-| Activity devices | Konnected motion and Hubitat room lights. A recent change skips the whole round. |
-| Turn off when a round runs | Hubitat room lights that should be switched off. Not bedrooms, lamps, outdoor timers, or outlets. |
+| Lights to monitor | A recent on or off skips the round. Check **Also turn off the monitored lights** to put these same lights on the turn-off list. |
+| Motion sensors to monitor | A recent motion change skips the round. |
+| Doors to monitor | A recent open or close skips the round. These doors are not locked or closed. |
+| Other lights to turn off | Extra lights that are not in the monitor list. |
 
 After the entry exists, use the integration page to add more rows:
 
@@ -63,4 +65,4 @@ The garage overhead door should not be added. Closing it from Home Assistant can
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.2` is tag `v1.0.2`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.3` is tag `v1.0.3`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
