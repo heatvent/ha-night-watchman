@@ -17,7 +17,12 @@ from .const import (
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
     CONF_CONTACT_ENTITY,
+    CONF_EXCLUDE_DOORS,
+    CONF_EXCLUDE_LIGHTS,
+    CONF_EXCLUDE_MOTION,
     CONF_INCLUDE_ACTIVITY_LIGHTS,
+    CONF_KEEP_ON_LIGHTS,
+    CONF_MONITOR_ALL,
     CONF_END,
     CONF_INTERVAL,
     CONF_LOCK_ENTITY,
@@ -60,7 +65,59 @@ def _as_list(value: Any) -> list[str]:
     return list(value)
 
 
-def _activity_entities(options: dict[str, Any]) -> list[str]:
+_MOTION = frozenset({"motion"})
+_DOORS = frozenset({"door", "garage_door", "opening", "window"})
+
+
+def _domain_entities(
+    hass: HomeAssistant, domain: str, device_classes: frozenset[str] | None = None
+) -> list[str]:
+    found: list[str] = []
+    for state in hass.states.async_all(domain):
+        if device_classes is not None and state.attributes.get("device_class") not in device_classes:
+            continue
+        found.append(state.entity_id)
+    return found
+
+
+def _unique(entity_ids: list[str]) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for entity_id in entity_ids:
+        if entity_id not in seen:
+            seen.add(entity_id)
+            unique.append(entity_id)
+    return unique
+
+
+def _monitored_lights(hass: HomeAssistant, options: dict[str, Any]) -> list[str]:
+    if options.get(CONF_MONITOR_ALL):
+        excluded = set(_as_list(options.get(CONF_EXCLUDE_LIGHTS)))
+        return [entity_id for entity_id in _domain_entities(hass, "light") if entity_id not in excluded]
+    lights = _as_list(options.get(CONF_ACTIVITY_LIGHTS))
+    lights.extend(
+        entity_id
+        for entity_id in _as_list(options.get(CONF_ACTIVITY_ENTITIES))
+        if entity_id.startswith("light.")
+    )
+    return _unique(lights)
+
+
+def _activity_entities(hass: HomeAssistant, options: dict[str, Any]) -> list[str]:
+    if options.get(CONF_MONITOR_ALL):
+        excluded_motion = set(_as_list(options.get(CONF_EXCLUDE_MOTION)))
+        excluded_doors = set(_as_list(options.get(CONF_EXCLUDE_DOORS)))
+        motion = [
+            entity_id
+            for entity_id in _domain_entities(hass, "binary_sensor", _MOTION)
+            if entity_id not in excluded_motion
+        ]
+        doors = [
+            entity_id
+            for entity_id in _domain_entities(hass, "binary_sensor", _DOORS)
+            if entity_id not in excluded_doors
+        ]
+        return _monitored_lights(hass, options) + motion + doors
     entities = []
     for key in (CONF_ACTIVITY_LIGHTS, CONF_ACTIVITY_MOTION, CONF_ACTIVITY_DOORS):
         entities.extend(_as_list(options.get(key)))
@@ -69,23 +126,13 @@ def _activity_entities(options: dict[str, Any]) -> list[str]:
     return entities
 
 
-def _turn_off_entities(options: dict[str, Any]) -> list[str]:
+def _turn_off_entities(hass: HomeAssistant, options: dict[str, Any]) -> list[str]:
     entities: list[str] = []
     if options.get(CONF_INCLUDE_ACTIVITY_LIGHTS, True):
-        entities.extend(_as_list(options.get(CONF_ACTIVITY_LIGHTS)))
-        entities.extend(
-            entity_id
-            for entity_id in _as_list(options.get(CONF_ACTIVITY_ENTITIES))
-            if entity_id.startswith("light.")
-        )
+        entities.extend(_monitored_lights(hass, options))
     entities.extend(_as_list(options.get(CONF_TURN_OFF_ENTITIES)))
-    unique: list[str] = []
-    seen: set[str] = set()
-    for entity_id in entities:
-        if entity_id not in seen:
-            seen.add(entity_id)
-            unique.append(entity_id)
-    return unique
+    keep = set(_as_list(options.get(CONF_KEEP_ON_LIGHTS)))
+    return [entity_id for entity_id in _unique(entities) if entity_id not in keep]
 
 
 def _changed_recently(hass: HomeAssistant, entity_id: str, quiet: timedelta, now: datetime) -> bool:
@@ -98,7 +145,7 @@ def _changed_recently(hass: HomeAssistant, entity_id: str, quiet: timedelta, now
 async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> None:
     options = _settings(entry)
     quiet = timedelta(minutes=int(options.get(CONF_QUIET_MINUTES, 45)))
-    activity = _activity_entities(options)
+    activity = _activity_entities(hass, options)
     if any(_changed_recently(hass, entity_id, quiet, now) for entity_id in activity):
         return
 
@@ -130,7 +177,7 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
         locked.append(name)
 
     turned_off: list[str] = []
-    for entity_id in _turn_off_entities(options):
+    for entity_id in _turn_off_entities(hass, options):
         state = hass.states.get(entity_id)
         if state is None or state.state != STATE_ON:
             continue

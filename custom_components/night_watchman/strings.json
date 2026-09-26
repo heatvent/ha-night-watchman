@@ -10,18 +10,20 @@
           "interval": "Minutes between rounds",
           "quiet_minutes": "Quiet period",
           "notify_service": "Notify service",
-          "activity_lights": "Lights to monitor",
-          "activity_motion": "Motion sensors to monitor",
-          "activity_doors": "Doors to monitor",
+          "exclude_lights": "Lights to ignore",
+          "exclude_motion": "Motion sensors to ignore",
+          "exclude_doors": "Doors to ignore",
           "include_activity_lights": "Also turn off the monitored lights",
+          "keep_on_lights": "Lights to leave on",
           "turn_off_entities": "Other lights to turn off"
         },
         "data_description": {
-          "activity_lights": "A recent on or off change skips the round.",
-          "activity_motion": "A recent motion change skips the round.",
-          "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
-          "include_activity_lights": "Adds every light from Lights to monitor to the turn-off list.",
-          "turn_off_entities": "Extra lights to turn off, including ones you are not monitoring.",
+          "exclude_lights": "Every other light is monitored. Ignore indicator LEDs, groups, and lights that change on a timer.",
+          "exclude_motion": "Every other motion sensor is monitored. Ignore cameras.",
+          "exclude_doors": "Every other door, gate, and window contact is monitored. This does not lock or close them.",
+          "include_activity_lights": "Turns off every monitored light when a round runs.",
+          "keep_on_lights": "Stays on even when the checkbox above is selected. Use this for bedrooms and lamps.",
+          "turn_off_entities": "Extra lights to turn off that are not already in the monitored set.",
           "notify_service": "Service under Developer Tools, for example phones_group."
         }
       }
@@ -75,10 +77,11 @@
           "interval": "Minutes between rounds",
           "quiet_minutes": "Quiet period",
           "notify_service": "Notify service",
-          "activity_lights": "Lights to monitor",
-          "activity_motion": "Motion sensors to monitor",
-          "activity_doors": "Doors to monitor",
+          "exclude_lights": "Lights to ignore",
+          "exclude_motion": "Motion sensors to ignore",
+          "exclude_doors": "Doors to ignore",
           "include_activity_lights": "Also turn off the monitored lights",
+          "keep_on_lights": "Lights to leave on",
           "turn_off_entities": "Other lights to turn off"
         }
       }
