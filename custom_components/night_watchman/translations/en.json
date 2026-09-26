@@ -27,7 +27,17 @@
         },
         "sections": {
           "doors_to_lock": {
-            "name": "Doors to Lock"
+            "name": "Doors to Lock",
+            "data": {
+              "lock_entity_1": "Lock Entity 1",
+              "contact_entity_1": "Door Contact 1",
+              "lock_entity_2": "Lock Entity 2",
+              "contact_entity_2": "Door Contact 2",
+              "lock_entity_3": "Lock Entity 3",
+              "contact_entity_3": "Door Contact 3",
+              "lock_entity_4": "Lock Entity 4",
+              "contact_entity_4": "Door Contact 4"
+            }
           }
         },
         "data_description": {
@@ -109,7 +119,17 @@
         },
         "sections": {
           "doors_to_lock": {
-            "name": "Doors to Lock"
+            "name": "Doors to Lock",
+            "data": {
+              "lock_entity_1": "Lock Entity 1",
+              "contact_entity_1": "Door Contact 1",
+              "lock_entity_2": "Lock Entity 2",
+              "contact_entity_2": "Door Contact 2",
+              "lock_entity_3": "Lock Entity 3",
+              "contact_entity_3": "Door Contact 3",
+              "lock_entity_4": "Lock Entity 4",
+              "contact_entity_4": "Door Contact 4"
+            }
           }
         }
       }

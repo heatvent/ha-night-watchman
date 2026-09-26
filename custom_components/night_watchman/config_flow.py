@@ -144,10 +144,7 @@ class NightWatchmanConfigFlow(ConfigFlow, domain=DOMAIN):
         cls, config_entry: ConfigEntry
     ) -> dict[str, type[ConfigSubentryFlow]]:
         """Locks and report-only contacts are added from the integration page."""
-        return {
-            SUBENTRY_LOCK: LockRuleFlow,
-            SUBENTRY_REPORT: ReportOpenFlow,
-        }
+        return {}
 
 
 class NightWatchmanOptionsFlow(OptionsFlow):
