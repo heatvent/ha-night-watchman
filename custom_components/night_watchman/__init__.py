@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNLOCKED
+from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
@@ -79,7 +79,7 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
             continue
         lock_entity = subentry.data.get(CONF_LOCK_ENTITY)
         lock_state = hass.states.get(lock_entity) if lock_entity else None
-        if lock_state is None or lock_state.state != STATE_UNLOCKED:
+        if lock_state is None or lock_state.state != "unlocked":
             continue
         await hass.services.async_call(
             "lock",
