@@ -31,7 +31,7 @@ When a round runs:
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.3`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.4`, …), not the tip of `main`.
 
 ### Manual
 
@@ -65,4 +65,4 @@ The garage overhead door should not be added. Closing it from Home Assistant can
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.3` is tag `v1.0.3`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.4` is tag `v1.0.4`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
