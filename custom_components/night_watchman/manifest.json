@@ -1,0 +1,11 @@
+{
+  "domain": "night_watchman",
+  "name": "Night Watchman",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://www.home-assistant.io/integrations/",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "requirements": [],
+  "version": "1.0.0"
+}
