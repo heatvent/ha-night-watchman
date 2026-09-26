@@ -33,6 +33,7 @@ from .const import (
     DOMAIN,
     SUBENTRY_LOCK,
     SUBENTRY_REPORT,
+    LOCK_SLOTS,
 )
 
 type WatchmanConfigEntry = ConfigEntry
@@ -151,22 +152,35 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
 
     locked: list[str] = []
     left_open: list[str] = []
+    seen_locks: set[str] = set()
+    rules: list[tuple[str, str, str | None]] = []
+    for slot in range(1, LOCK_SLOTS + 1):
+        lock_entity = options.get(f"lock_entity_{slot}")
+        contact = options.get(f"contact_entity_{slot}")
+        if lock_entity and contact:
+            rules.append((lock_entity, contact, None))
     for subentry in entry.subentries.values():
         contact = subentry.data.get(CONF_CONTACT_ENTITY)
-        if not contact:
+        lock_entity = subentry.data.get(CONF_LOCK_ENTITY) if subentry.subentry_type == SUBENTRY_LOCK else None
+        if contact:
+            rules.append((lock_entity or "", contact, subentry.title))
+
+    for lock_entity, contact, title in rules:
+        if lock_entity and lock_entity in seen_locks:
             continue
         contact_state = hass.states.get(contact)
-        name = subentry.title
+        contact_name = contact_state.name if contact_state else contact
+        name = title or (hass.states.get(lock_entity).name if lock_entity and hass.states.get(lock_entity) else contact_name)
         if contact_state is not None and contact_state.state == STATE_ON:
             left_open.append(name)
+            if lock_entity:
+                seen_locks.add(lock_entity)
             continue
-        if subentry.subentry_type != SUBENTRY_LOCK:
+        if not lock_entity or contact_state is None or contact_state.state != STATE_OFF:
             continue
-        if contact_state is None or contact_state.state != STATE_OFF:
-            continue
-        lock_entity = subentry.data.get(CONF_LOCK_ENTITY)
-        lock_state = hass.states.get(lock_entity) if lock_entity else None
+        lock_state = hass.states.get(lock_entity)
         if lock_state is None or lock_state.state != "unlocked":
+            seen_locks.add(lock_entity)
             continue
         await hass.services.async_call(
             "lock",
@@ -175,6 +189,7 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
             blocking=True,
         )
         locked.append(name)
+        seen_locks.add(lock_entity)
 
     turned_off: list[str] = []
     for entity_id in _turn_off_entities(hass, options):
@@ -182,7 +197,7 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
         if state is None or state.state != STATE_ON:
             continue
         domain = entity_id.split(".", 1)[0]
-        if domain != "light":
+        if domain not in ("light", "switch"):
             continue
         await hass.services.async_call(
             domain,

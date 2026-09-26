@@ -35,7 +35,27 @@ from .const import (
     DOMAIN,
     SUBENTRY_LOCK,
     SUBENTRY_REPORT,
+    LOCK_SLOTS,
 )
+
+
+def _lock_slot_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
+    """Optional lock and contact pairs. A door is locked only when its contact is closed."""
+    fields: dict[Any, Any] = {}
+    for slot in range(1, LOCK_SLOTS + 1):
+        lock_key = f"lock_entity_{slot}"
+        contact_key = f"contact_entity_{slot}"
+        lock_default = defaults.get(lock_key)
+        contact_default = defaults.get(contact_key)
+        lock_field = vol.Optional(lock_key, default=lock_default) if lock_default else vol.Optional(lock_key)
+        contact_field = (
+            vol.Optional(contact_key, default=contact_default) if contact_default else vol.Optional(contact_key)
+        )
+        fields[lock_field] = selector.EntitySelector(selector.EntitySelectorConfig(domain="lock"))
+        fields[contact_field] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="binary_sensor")
+        )
+    return fields
 
 
 def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
@@ -87,8 +107,9 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_TURN_OFF_ENTITIES, default=defaults.get(CONF_TURN_OFF_ENTITIES, [])
             ): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="light", multiple=True)
+                selector.EntitySelectorConfig(domain=["light", "switch"], multiple=True)
             ),
+            **_lock_slot_fields(defaults),
         }
     )
 

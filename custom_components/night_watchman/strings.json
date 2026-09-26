@@ -15,7 +15,15 @@
           "exclude_doors": "Doors to ignore",
           "include_activity_lights": "Also turn off the monitored lights",
           "keep_on_lights": "Lights to leave on",
-          "turn_off_entities": "Other lights to turn off"
+          "turn_off_entities": "Other devices to turn off",
+          "lock_entity_1": "Door 1 lock",
+          "contact_entity_1": "Door 1 must be closed",
+          "lock_entity_2": "Door 2 lock",
+          "contact_entity_2": "Door 2 must be closed",
+          "lock_entity_3": "Door 3 lock",
+          "contact_entity_3": "Door 3 must be closed",
+          "lock_entity_4": "Door 4 lock",
+          "contact_entity_4": "Door 4 must be closed"
         },
         "data_description": {
           "exclude_lights": "Every other light is monitored. Ignore indicator LEDs, groups, and lights that change on a timer.",
@@ -23,7 +31,9 @@
           "exclude_doors": "Every other door, gate, and window contact is monitored. This does not lock or close them.",
           "include_activity_lights": "Turns off every monitored light when a round runs.",
           "keep_on_lights": "Stays on even when the checkbox above is selected. Use this for bedrooms and lamps.",
-          "turn_off_entities": "Extra lights to turn off that are not already in the monitored set.",
+          "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
+          "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
+          "contact_entity_1": "Do not use the garage overhead door.",
           "notify_service": "Service under Developer Tools, for example phones_group."
         }
       }
@@ -82,7 +92,15 @@
           "exclude_doors": "Doors to ignore",
           "include_activity_lights": "Also turn off the monitored lights",
           "keep_on_lights": "Lights to leave on",
-          "turn_off_entities": "Other lights to turn off"
+          "turn_off_entities": "Other devices to turn off",
+          "lock_entity_1": "Door 1 lock",
+          "contact_entity_1": "Door 1 must be closed",
+          "lock_entity_2": "Door 2 lock",
+          "contact_entity_2": "Door 2 must be closed",
+          "lock_entity_3": "Door 3 lock",
+          "contact_entity_3": "Door 3 must be closed",
+          "lock_entity_4": "Door 4 lock",
+          "contact_entity_4": "Door 4 must be closed"
         }
       }
     }

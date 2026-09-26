@@ -23,3 +23,5 @@ CONF_CONTACT_ENTITY = "contact_entity"
 
 SUBENTRY_LOCK = "lock_rule"
 SUBENTRY_REPORT = "report_open"
+
+LOCK_SLOTS = 4

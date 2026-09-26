@@ -16,7 +16,7 @@ A round is skipped while any **activity** device has changed during the quiet pe
 
 When a round runs:
 
-- Selected lights that are still on are turned off.
+- Selected lights that are still on are turned off, along with any switches you added, such as a coffee maker.
 - Each lock is turned only when its door contact is closed.
 - Report-only contacts are named in the phone message. Nothing closes them.
 
@@ -31,7 +31,7 @@ When a round runs:
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.6`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.7`, …), not the tip of `main`.
 
 ### Manual
 
@@ -50,7 +50,8 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Lights / motion / doors to ignore | Everything else in that category is monitored, including camera motion. A recent change skips the round. Ignore indicator LEDs, light groups, and timer lights. |
 | Also turn off the monitored lights | Turns off every monitored light when a round runs. |
 | Lights to leave on | Bedrooms and lamps to keep on even when that box is checked. |
-| Other lights to turn off | Lights to switch off that are not already monitored. |
+| Other devices to turn off | Extra lights or switches, such as a coffee maker or 3D printer. Do not add strips that should stay on. |
+| Door 1–4 lock and contact | If the lock is unlocked and that contact is closed, the round locks it. An open contact is reported and left unlocked. Do not add the garage overhead door. |
 
 After the entry exists, use the integration page to add more rows:
 
@@ -65,4 +66,4 @@ The garage overhead door should not be added. Closing it from Home Assistant can
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.6` is tag `v1.0.6`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.7` is tag `v1.0.7`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
