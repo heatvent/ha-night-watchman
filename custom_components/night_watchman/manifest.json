@@ -1,11 +1,13 @@
 {
   "domain": "night_watchman",
   "name": "Night Watchman",
-  "codeowners": [],
+  "codeowners": ["@heatvent"],
   "config_flow": true,
-  "documentation": "https://www.home-assistant.io/integrations/",
+  "documentation": "https://github.com/heatvent/ha-night-watchman",
   "integration_type": "service",
   "iot_class": "calculated",
+  "issue_tracker": "https://github.com/heatvent/ha-night-watchman/issues",
+  "loggers": ["custom_components.night_watchman"],
   "requirements": [],
   "version": "1.0.0"
 }

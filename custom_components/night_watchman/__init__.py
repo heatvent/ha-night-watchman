@@ -95,7 +95,7 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
         if state is None or state.state != STATE_ON:
             continue
         domain = entity_id.split(".", 1)[0]
-        if domain not in ("light", "switch"):
+        if domain != "light":
             continue
         await hass.services.async_call(
             domain,
