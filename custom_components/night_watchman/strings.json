@@ -1,5 +1,8 @@
 {
   "config": {
+    "error": {
+      "invalid_notify_service": "Use the notify service name only, such as phones_group."
+    },
     "step": {
       "user": {
         "title": "Night Watchman",
@@ -28,6 +31,7 @@
         "sections": {
           "doors_to_lock": {
             "name": "Doors to Lock",
+            "description": "A lock runs only when it is unlocked and the contact beside it is closed. An open contact is reported and left unlocked. Do not add the garage overhead door.",
             "data": {
               "lock_entity_1": "Lock Entity 1",
               "contact_entity_1": "Door Contact 1",
@@ -93,9 +97,24 @@
     }
   },
   "options": {
+    "error": {
+      "invalid_notify_service": "Use the notify service name only, such as phones_group."
+    },
     "step": {
       "init": {
         "title": "Night Watchman",
+        "description": "Rounds run from the first time through the last time. A round is skipped when any activity device changed during the quiet period. On/off is not activity. Only a recent change is.",
+        "data_description": {
+          "activity_lights": "A recent on or off change skips the round. A new light is ignored until you add it here.",
+          "activity_motion": "A recent motion change skips the round, including indoor cameras if you add them.",
+          "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
+          "include_activity_lights": "Turns off every monitored light when a round runs.",
+          "keep_on_lights": "Stays on even when the checkbox above is selected. Use this for bedrooms and lamps.",
+          "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
+          "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
+          "contact_entity_1": "Do not use the garage overhead door.",
+          "notify_service": "Service under Developer Tools, for example phones_group."
+        },
         "data": {
           "start": "First round",
           "end": "Last round",
@@ -120,6 +139,7 @@
         "sections": {
           "doors_to_lock": {
             "name": "Doors to Lock",
+            "description": "A lock runs only when it is unlocked and the contact beside it is closed. An open contact is reported and left unlocked. Do not add the garage overhead door.",
             "data": {
               "lock_entity_1": "Lock Entity 1",
               "contact_entity_1": "Door Contact 1",

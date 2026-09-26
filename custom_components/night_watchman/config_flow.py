@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -12,7 +13,6 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     ConfigSubentryFlow,
     OptionsFlow,
-    SubentryFlowResult,
 )
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import section
@@ -22,22 +22,31 @@ from .const import (
     CONF_ACTIVITY_DOORS,
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
-    CONF_CONTACT_ENTITY,
+    CONF_DOORS_TO_LOCK,
     CONF_END,
     CONF_INCLUDE_ACTIVITY_LIGHTS,
     CONF_INTERVAL,
     CONF_KEEP_ON_LIGHTS,
-    CONF_LOCK_ENTITY,
     CONF_MONITOR_ALL,
     CONF_NOTIFY_SERVICE,
     CONF_QUIET_MINUTES,
     CONF_START,
     CONF_TURN_OFF_ENTITIES,
     DOMAIN,
-    SUBENTRY_LOCK,
-    SUBENTRY_REPORT,
     LOCK_SLOTS,
 )
+
+_NOTIFY_SERVICE = re.compile(r"[a-z0-9_]+")
+
+
+def _slot_default(defaults: dict[str, Any], key: str) -> str | None:
+    section = defaults.get(CONF_DOORS_TO_LOCK)
+    if isinstance(section, dict):
+        nested = section.get(key)
+        if isinstance(nested, str) and nested:
+            return nested
+    value = defaults.get(key)
+    return value if isinstance(value, str) and value else None
 
 
 def _lock_slot_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
@@ -46,8 +55,8 @@ def _lock_slot_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
     for slot in range(1, LOCK_SLOTS + 1):
         lock_key = f"lock_entity_{slot}"
         contact_key = f"contact_entity_{slot}"
-        lock_default = defaults.get(lock_key)
-        contact_default = defaults.get(contact_key)
+        lock_default = _slot_default(defaults, lock_key)
+        contact_default = _slot_default(defaults, contact_key)
         lock_field = vol.Optional(lock_key, default=lock_default) if lock_default else vol.Optional(lock_key)
         contact_field = (
             vol.Optional(contact_key, default=contact_default) if contact_default else vol.Optional(contact_key)
@@ -110,12 +119,41 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["light", "switch"], multiple=True)
             ),
-            vol.Required("doors_to_lock"): section(
+            vol.Required(CONF_DOORS_TO_LOCK): section(
                 vol.Schema(_lock_slot_fields(defaults)),
                 {"collapsed": False},
             ),
         }
     )
+
+
+def _clean_notify(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    name = value.strip().removeprefix("notify.").strip()
+    if not _NOTIFY_SERVICE.fullmatch(name):
+        return None
+    return name
+
+
+def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Store lock pairs in one place and never fall back to monitoring every device."""
+    data = dict(user_input)
+    section = data.get(CONF_DOORS_TO_LOCK)
+    if not isinstance(section, dict):
+        section = {}
+    stored_section: dict[str, str | None] = {}
+    for slot in range(1, LOCK_SLOTS + 1):
+        for key in (f"lock_entity_{slot}", f"contact_entity_{slot}"):
+            value = section.get(key) or data.get(key)
+            stored = value if isinstance(value, str) and value else None
+            stored_section[key] = stored
+            data[key] = stored
+    service = _clean_notify(data.get(CONF_NOTIFY_SERVICE))
+    data[CONF_NOTIFY_SERVICE] = service or "phones_group"
+    data[CONF_DOORS_TO_LOCK] = stored_section
+    data[CONF_MONITOR_ALL] = False
+    return data
 
 
 class NightWatchmanConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -125,12 +163,19 @@ class NightWatchmanConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Create the entry."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            await self.async_set_unique_id(DOMAIN)
-            self._abort_if_unique_id_configured()
-            user_input[CONF_MONITOR_ALL] = False
-            return self.async_create_entry(title="Night Watchman", data=user_input)
-        return self.async_show_form(step_id="user", data_schema=_schedule_schema({}))
+            if _clean_notify(user_input.get(CONF_NOTIFY_SERVICE)) is None:
+                errors[CONF_NOTIFY_SERVICE] = "invalid_notify_service"
+            else:
+                await self.async_set_unique_id(DOMAIN)
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(title="Night Watchman", data=_normalize_submission(user_input))
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_schedule_schema(user_input or {}),
+            errors=errors,
+        )
 
     @staticmethod
     @callback
@@ -143,7 +188,7 @@ class NightWatchmanConfigFlow(ConfigFlow, domain=DOMAIN):
     def async_get_supported_subentry_types(
         cls, config_entry: ConfigEntry
     ) -> dict[str, type[ConfigSubentryFlow]]:
-        """Locks and report-only contacts are added from the integration page."""
+        """Lock pairs live on the main form, so there is nothing extra to add."""
         return {}
 
 
@@ -152,89 +197,16 @@ class NightWatchmanOptionsFlow(OptionsFlow):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Edit the main settings."""
-        if user_input is not None:
-            user_input[CONF_MONITOR_ALL] = False
-            return self.async_create_entry(data=user_input)
+        errors: dict[str, str] = {}
         current = {**self.config_entry.data, **self.config_entry.options}
-        return self.async_show_form(step_id="init", data_schema=_schedule_schema(current))
-
-
-def _lock_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
-    defaults = defaults or {}
-    return vol.Schema(
-        {
-            vol.Required(CONF_LOCK_ENTITY, default=defaults.get(CONF_LOCK_ENTITY)): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="lock")
-            ),
-            vol.Required(
-                CONF_CONTACT_ENTITY, default=defaults.get(CONF_CONTACT_ENTITY)
-            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="binary_sensor")),
-        }
-    )
-
-
-class LockRuleFlow(ConfigSubentryFlow):
-    """Add or edit a lock that requires a closed contact."""
-
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Add a lock rule."""
         if user_input is not None:
-            state = self.hass.states.get(user_input[CONF_LOCK_ENTITY])
-            title = state.name if state else user_input[CONF_LOCK_ENTITY]
-            return self.async_create_entry(title=title, data=user_input)
-        return self.async_show_form(step_id="user", data_schema=_lock_schema())
-
-    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Edit a lock rule."""
-        subentry = self._get_reconfigure_subentry()
-        if user_input is not None:
-            state = self.hass.states.get(user_input[CONF_LOCK_ENTITY])
-            title = state.name if state else user_input[CONF_LOCK_ENTITY]
-            return self.async_update_and_abort(
-                self._get_entry(), subentry, title=title, data=user_input
-            )
+            if _clean_notify(user_input.get(CONF_NOTIFY_SERVICE)) is None:
+                errors[CONF_NOTIFY_SERVICE] = "invalid_notify_service"
+                current = {**current, **user_input}
+            else:
+                return self.async_create_entry(data=_normalize_submission(user_input))
         return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=_lock_schema(dict(subentry.data)),
-        )
-
-
-class ReportOpenFlow(ConfigSubentryFlow):
-    """Add or edit a contact that is only reported when open."""
-
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Add a report-only contact."""
-        if user_input is not None:
-            state = self.hass.states.get(user_input[CONF_CONTACT_ENTITY])
-            title = state.name if state else user_input[CONF_CONTACT_ENTITY]
-            return self.async_create_entry(title=title, data=user_input)
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_CONTACT_ENTITY): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="binary_sensor")
-                    )
-                }
-            ),
-        )
-
-    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Edit a report-only contact."""
-        subentry = self._get_reconfigure_subentry()
-        if user_input is not None:
-            state = self.hass.states.get(user_input[CONF_CONTACT_ENTITY])
-            title = state.name if state else user_input[CONF_CONTACT_ENTITY]
-            return self.async_update_and_abort(
-                self._get_entry(), subentry, title=title, data=user_input
-            )
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_CONTACT_ENTITY, default=subentry.data.get(CONF_CONTACT_ENTITY)
-                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain="binary_sensor"))
-                }
-            ),
+            step_id="init",
+            data_schema=_schedule_schema(current),
+            errors=errors,
         )

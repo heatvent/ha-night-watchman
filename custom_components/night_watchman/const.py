@@ -20,6 +20,7 @@ CONF_KEEP_ON_LIGHTS = "keep_on_lights"
 CONF_TURN_OFF_ENTITIES = "turn_off_entities"
 CONF_LOCK_ENTITY = "lock_entity"
 CONF_CONTACT_ENTITY = "contact_entity"
+CONF_DOORS_TO_LOCK = "doors_to_lock"
 
 SUBENTRY_LOCK = "lock_rule"
 SUBENTRY_REPORT = "report_open"

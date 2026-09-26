@@ -8,15 +8,18 @@
 
 ![Night Watchman](https://raw.githubusercontent.com/heatvent/ha-night-watchman/main/custom_components/night_watchman/icon.png)
 
-Custom integration that walks the house at night. You pick the devices, the same way Presence Simulation lets you pick the lights it uses.
+The Night Watchman checks on your house to make sure it is secure and that all lights are turned off after everyone has gone to bed.
 
-A round is skipped while any **activity** device has changed during the quiet period. Sitting on does not count. Leave washer, dryer, power strips, and indicator LEDs out of that list.
+It makes a round only when the house has been quiet. If someone is still up, it waits and tries again later. A light that is simply left on does not count as activity. Only a recent change does: a light switched, motion, or a door opened or closed. You choose every device. A new light, sensor, or switch is ignored until you add it.
 
-When a round runs:
+When a round does run:
 
-- Selected lights that are still on are turned off, along with any switches you added, such as a coffee maker.
-- Each lock is turned only when its door contact is closed.
-- Report-only contacts are named in the phone message. Nothing closes them.
+- Monitored lights that are still on are turned off, plus any extra lights or switches you picked, such as a coffee maker.
+- Each lock is locked only when it is unlocked and its door contact is closed.
+- An open door is left alone and named in the phone message. Nothing is closed.
+- The garage overhead door is never locked.
+
+A message goes out only when something was locked, turned off, or left open.
 
 ---
 
@@ -29,7 +32,7 @@ When a round runs:
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.11`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.12`, …), not the tip of `main`.
 
 ### Manual
 
@@ -41,29 +44,22 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 
 | Setting | What it does |
 |---|---|
-| First round / last round | Window when rounds are allowed. Default is 1:00 AM through 5:00 AM. |
-| Minutes between rounds | How often a round is attempted inside that window. Default is 60. |
-| Quiet period | How long every activity device must stay unchanged before a round proceeds. Default is 45 minutes. |
-| Notify service | Home Assistant notify service, for example `phones_group`. A message is sent only when something was locked, turned off, or left open. |
-| Lights to monitor | A recent on or off skips the round. New lights are ignored until you add them. |
-| Motion sensors to monitor | A recent motion change skips the round. Add indoor cameras here if you want them. |
-| Doors to monitor | A recent open or close skips the round. These doors are not locked or closed. |
-| Also turn off the monitored lights | Turns off every monitored light when a round runs. |
-| Lights to leave on | Bedrooms and lamps to keep on even when that box is checked. |
-| Other devices to turn off | Extra lights or switches, such as a coffee maker or 3D printer. Do not add strips that should stay on. |
-| Door 1–4 lock and contact | If the lock is unlocked and that contact is closed, the round locks it. An open contact is reported and left unlocked. Do not add the garage overhead door. |
+| First round / Last round | When rounds are allowed. The default is 1:00 AM through 5:00 AM, including both times. |
+| Minutes between rounds | How often a round is attempted inside that window. The default is 60, so a 1:00 start runs at 1, 2, 3, 4, and 5. |
+| Quiet period | How long every monitored device must stay unchanged before a round proceeds. The default is 45 minutes. |
+| Notify service | The notify service name, for example `phones_group`. Leave off the `notify.` prefix. |
+| Monitored Lights | A recent on or off skips the round. These lights are also turned off when **Turn Off All Monitored Lights** is selected. |
+| Monitored Motion Sensors | A recent motion change skips the round. Indoor cameras belong here if you want them counted. |
+| Monitored Doors | A recent open or close skips the round. This list does not lock or close anything. |
+| Turn Off All Monitored Lights | Turns off the monitored lights when a round runs. |
+| Lights to Keep On | Bedrooms, lamps, and anything that must stay on even when the box above is selected. |
+| Other Lights/Devices to Turn Off | Extra lights or switches, such as a coffee maker or 3D printer. Leave washer, dryer, and power strips off this list. |
+| Doors to Lock | Up to four lock and contact pairs. The lock runs only when that contact is closed and the lock is unlocked. An open contact is reported and left unlocked. |
 
-After the entry exists, use the integration page to add more rows:
-
-| Add | What it does |
-|---|---|
-| Lock if the door is closed | Hubitat lock plus the contact that must read closed before the lock runs. An open contact is reported and left unlocked. |
-| Report if open | Contacts such as patio doors or a gate. They are named in the message and are not locked or closed. |
-
-The garage overhead door should not be added. Closing it from Home Assistant can shut it on someone in the opening.
+Do not add the garage overhead door. Night Watchman will refuse to lock a device whose name says overhead, and it never closes a cover.
 
 ---
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.11` is tag `v1.0.11`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.12` is tag `v1.0.12`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
