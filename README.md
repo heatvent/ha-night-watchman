@@ -6,9 +6,7 @@
 
 **GitHub:** https://github.com/heatvent/ha-night-watchman
 
-<p align="center">
-  <img src="custom_components/night_watchman/icon.png" width="144" alt="Night Watchman">
-</p>
+![Night Watchman](https://raw.githubusercontent.com/heatvent/ha-night-watchman/main/custom_components/night_watchman/icon.png)
 
 Custom integration that walks the house at night. You pick the devices, the same way Presence Simulation lets you pick the lights it uses.
 
@@ -31,7 +29,7 @@ When a round runs:
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.8`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.9`, …), not the tip of `main`.
 
 ### Manual
 
@@ -68,4 +66,4 @@ The garage overhead door should not be added. Closing it from Home Assistant can
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.8` is tag `v1.0.8`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.9` is tag `v1.0.9`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
