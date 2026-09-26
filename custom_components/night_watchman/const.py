@@ -26,3 +26,4 @@ SUBENTRY_LOCK = "lock_rule"
 SUBENTRY_REPORT = "report_open"
 
 LOCK_SLOTS = 4
+PLATFORMS = ["sensor", "switch"]

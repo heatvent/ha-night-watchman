@@ -5,12 +5,13 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timedelta
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_OFF, STATE_ON
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.event import async_track_time_change
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -29,7 +30,9 @@ from .const import (
     CONF_QUIET_MINUTES,
     CONF_START,
     CONF_TURN_OFF_ENTITIES,
+    DOMAIN,
     LOCK_SLOTS,
+    PLATFORMS,
     SUBENTRY_LOCK,
 )
 
@@ -206,12 +209,77 @@ async def _call_entity(hass: HomeAssistant, domain: str, service: str, entity_id
     return True
 
 
-async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> None:
+class NightWatchmanRuntime:
+    """Shared state for the switch, sensors, and the night rounds."""
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        self.entry = entry
+        self.enabled = True
+        self.suppress_activity = False
+        self.last_round: datetime | None = None
+        self.last_round_summary: str | None = None
+        self.last_activity: datetime | None = None
+        self.last_activity_entity: str | None = None
+        self.last_activity_name: str | None = None
+        self._listeners: list[Callable[[], None]] = []
+
+    @callback
+    def add_listener(self, update: Callable[[], None]) -> Callable[[], None]:
+        self._listeners.append(update)
+
+        @callback
+        def _remove() -> None:
+            if update in self._listeners:
+                self._listeners.remove(update)
+
+        return _remove
+
+    @callback
+    def record_activity(self, entity_id: str, name: str, when: datetime) -> None:
+        self.last_activity = when
+        self.last_activity_entity = entity_id
+        self.last_activity_name = name
+        self._publish()
+
+    @callback
+    def record_round(self, when: datetime, summary: str) -> None:
+        self.last_round = when
+        self.last_round_summary = summary
+        self._publish()
+
+    @callback
+    def _publish(self) -> None:
+        for update in list(self._listeners):
+            update()
+
+
+_IGNORED_ACTIVITY = frozenset({STATE_UNAVAILABLE, STATE_UNKNOWN, "none", ""})
+
+
+@callback
+def _remember_activity(runtime: NightWatchmanRuntime, event: Event) -> None:
+    """Remember a real change. Ignore startup noise and actions this round just took."""
+    if runtime.suppress_activity:
+        return
+    old_state = event.data.get("old_state")
+    new_state = event.data.get("new_state")
+    if old_state is None or new_state is None or old_state.state == new_state.state:
+        return
+    if old_state.state in _IGNORED_ACTIVITY or new_state.state in _IGNORED_ACTIVITY:
+        return
+    runtime.record_activity(
+        new_state.entity_id,
+        new_state.name or new_state.entity_id,
+        dt_util.as_local(new_state.last_changed or dt_util.utcnow()),
+    )
+
+
+async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> str | None:
     options = _settings(entry)
     quiet = timedelta(minutes=_positive_int(options.get(CONF_QUIET_MINUTES), 45))
     if any(_changed_recently(hass, entity_id, quiet, now) for entity_id in _activity_entities(options)):
         _LOGGER.debug("Night Watchman skipped this round because the house is still active")
-        return
+        return None
 
     locked: list[str] = []
     left_open: list[str] = []
@@ -271,28 +339,33 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
     if left_open:
         parts.append("Still open: " + ", ".join(left_open) + ".")
     if not parts:
-        return
+        return "Nothing to do"
 
+    summary = " ".join(parts)
     service = _notify_service_name(options.get(CONF_NOTIFY_SERVICE))
     if service is None:
         _LOGGER.error("Night Watchman notify service is not a plain service name")
-        return
+        return summary
     if not hass.services.has_service("notify", service):
         _LOGGER.error("Night Watchman notify service notify.%s is not available", service)
-        return
+        return summary
     try:
         await hass.services.async_call(
             "notify",
             service,
-            {"title": "Night watchman", "message": " ".join(parts)},
+            {"title": "Night watchman", "message": summary},
             blocking=False,
         )
     except Exception:
         _LOGGER.exception("Night Watchman could not notify %s", service)
+    return summary
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> bool:
     """Set up one Night Watchman entry."""
+    runtime = NightWatchmanRuntime(entry)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def _tick(now: datetime) -> None:
         if entry.entry_id in _ACTIVE_ROUNDS:
@@ -308,15 +381,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
             return
         if not round_is_due(local.hour * 60 + local.minute, start, end, interval):
             return
+        if not runtime.enabled:
+            _LOGGER.debug("Night Watchman is paused")
+            return
         _ACTIVE_ROUNDS.add(entry.entry_id)
+        runtime.suppress_activity = True
         try:
-            await _run_round(hass, entry, local)
+            summary = await _run_round(hass, entry, local)
         except Exception:
             _LOGGER.exception("Night Watchman round failed")
+            summary = None
         finally:
+            runtime.suppress_activity = False
             _ACTIVE_ROUNDS.discard(entry.entry_id)
+        if summary is not None:
+            runtime.record_round(local, summary)
 
     entry.async_on_unload(async_track_time_change(hass, _tick, second=10))
+    watched = _activity_entities(_settings(entry))
+    if watched:
+
+        @callback
+        def _activity(event: Event) -> None:
+            _remember_activity(runtime, event)
+
+        entry.async_on_unload(async_track_state_change_event(hass, watched, _activity))
     entry.async_on_unload(entry.add_update_listener(_reload))
     return True
 
@@ -328,4 +417,6 @@ async def _reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _ACTIVE_ROUNDS.discard(entry.entry_id)
-    return True
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+    return unloaded

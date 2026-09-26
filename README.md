@@ -21,6 +21,19 @@ When a round does run:
 
 A message goes out only when something was locked, turned off, or left open.
 
+Turn the **Enabled** switch off when you want the night off: guests, you are still up, or you are away and do not want the house touched. The integration stays in place, and you can turn the switch back on from a dashboard or an automation. Disabling the integration itself stops it completely.
+
+After the first restart you will also see:
+
+| Entity | What it shows |
+|---|---|
+| Enabled | On means the rounds are allowed. Off skips them. |
+| Last round | When a round actually finished. A round that was skipped because someone was still up is not recorded. The result is in the entity attributes. The card reads as time since that round. |
+| Last activity | When a monitored light, motion sensor, or door last changed. The card reads as time since that change. |
+| Last active device | Which of those devices changed. |
+
+These times are remembered across a Home Assistant restart. Turning lights off during a round does not count as activity.
+
 ---
 
 ## Install
@@ -32,7 +45,7 @@ A message goes out only when something was locked, turned off, or left open.
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.12`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.13`, …), not the tip of `main`.
 
 ### Manual
 
@@ -62,4 +75,4 @@ Do not add the garage overhead door. Night Watchman will refuse to lock a device
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.12` is tag `v1.0.12`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.13` is tag `v1.0.13`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
