@@ -1,21 +1,66 @@
 # Night Watchman
 
-Home Assistant integration that runs nighttime rounds. You choose the devices in the integration, the same way Presence Simulation lets you choose its lights.
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/heatvent/ha-night-watchman)
+[![GitHub release](https://img.shields.io/github/v/release/heatvent/ha-night-watchman)](https://github.com/heatvent/ha-night-watchman/releases)
+[![HA](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-blue.svg)](https://www.home-assistant.io/)
 
-A round is skipped when any activity device changed during the quiet period. Current on/off is not activity. Switches that stay on, such as a washer or a power strip, should not be selected as activity devices.
+**GitHub:** https://github.com/heatvent/ha-night-watchman
 
-When a round does run, selected lights that are still on are turned off. Each lock runs only when its paired door contact is closed. Report-only contacts are included in the phone message and are not locked or closed.
+<p align="center">
+  <img src="custom_components/night_watchman/icon.png" width="144" alt="Night Watchman">
+</p>
 
-## Install with HACS
+Custom integration that walks the house at night. You pick the devices, the same way Presence Simulation lets you pick the lights it uses.
 
-1. In HACS, open the three-dot menu and choose **Custom repositories**.
-2. Add `https://github.com/heatvent/ha-night-watchman` as an **Integration**.
-3. Download **Night Watchman**.
-4. Restart Home Assistant.
-5. Go to **Settings**, **Devices & services**, **Add integration**, and choose **Night Watchman**.
+A round is skipped while any **activity** device has changed during the quiet period. Sitting on does not count. Leave washer, dryer, power strips, and indicator LEDs out of that list.
 
-Set the first and last round, the minutes between rounds, the quiet period, the notification service, the activity devices, and the lights to turn off. Then add a **Lock if the door is closed** entry for each lock, and a **Report if open** entry for contacts that should only be mentioned.
+When a round runs:
+
+- Selected lights that are still on are turned off.
+- Each lock is turned only when its door contact is closed.
+- Report-only contacts are named in the phone message. Nothing closes them.
+
+---
+
+## Install
+
+### HACS
+
+1. **HACS → Integrations → ⋮ → Custom repositories**
+2. URL: `https://github.com/heatvent/ha-night-watchman` · Category: **Integration**
+3. Download **Night Watchman**, then **restart** Home Assistant
+4. **Settings → Devices & services → Add integration → Night Watchman**
+
+HACS follows **GitHub Releases** (`v1.0.2`, …), not the tip of `main`.
+
+### Manual
+
+Copy only `custom_components/night_watchman` into your Home Assistant `custom_components` folder. Do not copy the rest of this repo, and do not rename the folder.
+
+---
+
+## Setup
+
+| Setting | What it does |
+|---|---|
+| First round / last round | Window when rounds are allowed. Default is 1:00 AM through 5:00 AM. |
+| Minutes between rounds | How often a round is attempted inside that window. Default is 60. |
+| Quiet period | How long every activity device must stay unchanged before a round proceeds. Default is 45 minutes. |
+| Notify service | Home Assistant notify service, for example `phones_group`. A message is sent only when something was locked, turned off, or left open. |
+| Activity devices | Konnected motion and Hubitat room lights. A recent change skips the whole round. |
+| Turn off when a round runs | Hubitat room lights that should be switched off. Not bedrooms, lamps, outdoor timers, or outlets. |
+
+After the entry exists, use the integration page to add more rows:
+
+| Add | What it does |
+|---|---|
+| Lock if the door is closed | Hubitat lock plus the contact that must read closed before the lock runs. An open contact is reported and left unlocked. |
+| Report if open | Contacts such as patio doors or a gate. They are named in the message and are not locked or closed. |
+
+The garage overhead door should not be added. Closing it from Home Assistant can shut it on someone in the opening.
+
+---
 
 ## Updates
 
-Publish a GitHub release whose tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. For version `1.0.0`, the tag is `v1.0.0`. Bump that version and the tag together for each update. HACS then offers the release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.2` is tag `v1.0.2`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
