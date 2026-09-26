@@ -19,7 +19,7 @@
         },
         "data_description": {
           "exclude_lights": "Every other light is monitored. Ignore indicator LEDs, groups, and lights that change on a timer.",
-          "exclude_motion": "Every other motion sensor is monitored. Ignore cameras.",
+          "exclude_motion": "Every other motion sensor is monitored, including cameras.",
           "exclude_doors": "Every other door, gate, and window contact is monitored. This does not lock or close them.",
           "include_activity_lights": "Turns off every monitored light when a round runs.",
           "keep_on_lights": "Stays on even when the checkbox above is selected. Use this for bedrooms and lamps.",

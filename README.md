@@ -31,7 +31,7 @@ When a round runs:
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.5`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.6`, …), not the tip of `main`.
 
 ### Manual
 
@@ -47,7 +47,7 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Minutes between rounds | How often a round is attempted inside that window. Default is 60. |
 | Quiet period | How long every activity device must stay unchanged before a round proceeds. Default is 45 minutes. |
 | Notify service | Home Assistant notify service, for example `phones_group`. A message is sent only when something was locked, turned off, or left open. |
-| Lights / motion / doors to ignore | Everything else in that category is monitored. A recent change skips the round. Ignore indicator LEDs, light groups, timer lights, and camera motion. |
+| Lights / motion / doors to ignore | Everything else in that category is monitored, including camera motion. A recent change skips the round. Ignore indicator LEDs, light groups, and timer lights. |
 | Also turn off the monitored lights | Turns off every monitored light when a round runs. |
 | Lights to leave on | Bedrooms and lamps to keep on even when that box is checked. |
 | Other lights to turn off | Lights to switch off that are not already monitored. |
@@ -65,4 +65,4 @@ The garage overhead door should not be added. Closing it from Home Assistant can
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.5` is tag `v1.0.5`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.6` is tag `v1.0.6`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
