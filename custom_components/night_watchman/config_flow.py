@@ -15,6 +15,7 @@ from homeassistant.config_entries import (
     SubentryFlowResult,
 )
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
@@ -109,7 +110,10 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["light", "switch"], multiple=True)
             ),
-            **_lock_slot_fields(defaults),
+            vol.Required("doors_to_lock"): section(
+                vol.Schema(_lock_slot_fields(defaults)),
+                {"collapsed": False},
+            ),
         }
     )
 

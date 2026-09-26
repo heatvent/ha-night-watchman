@@ -155,8 +155,12 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
     seen_locks: set[str] = set()
     rules: list[tuple[str, str, str | None]] = []
     for slot in range(1, LOCK_SLOTS + 1):
-        lock_entity = options.get(f"lock_entity_{slot}")
-        contact = options.get(f"contact_entity_{slot}")
+        lock_entity = options.get(f"lock_entity_{slot}") or (options.get("doors_to_lock") or {}).get(
+            f"lock_entity_{slot}"
+        )
+        contact = options.get(f"contact_entity_{slot}") or (options.get("doors_to_lock") or {}).get(
+            f"contact_entity_{slot}"
+        )
         if lock_entity and contact:
             rules.append((lock_entity, contact, None))
     for subentry in entry.subentries.values():
