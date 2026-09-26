@@ -18,11 +18,11 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_ACTIVITY_DOORS,
+    CONF_ACTIVITY_LIGHTS,
+    CONF_ACTIVITY_MOTION,
     CONF_CONTACT_ENTITY,
     CONF_END,
-    CONF_EXCLUDE_DOORS,
-    CONF_EXCLUDE_LIGHTS,
-    CONF_EXCLUDE_MOTION,
     CONF_INCLUDE_ACTIVITY_LIGHTS,
     CONF_INTERVAL,
     CONF_KEEP_ON_LIGHTS,
@@ -75,19 +75,19 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_NOTIFY_SERVICE, default=defaults.get(CONF_NOTIFY_SERVICE, "phones_group")
             ): selector.TextSelector(),
             vol.Optional(
-                CONF_EXCLUDE_LIGHTS, default=defaults.get(CONF_EXCLUDE_LIGHTS, [])
+                CONF_ACTIVITY_LIGHTS, default=defaults.get(CONF_ACTIVITY_LIGHTS, [])
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="light", multiple=True)
             ),
             vol.Optional(
-                CONF_EXCLUDE_MOTION, default=defaults.get(CONF_EXCLUDE_MOTION, [])
+                CONF_ACTIVITY_MOTION, default=defaults.get(CONF_ACTIVITY_MOTION, [])
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain="binary_sensor", device_class="motion", multiple=True
                 )
             ),
             vol.Optional(
-                CONF_EXCLUDE_DOORS, default=defaults.get(CONF_EXCLUDE_DOORS, [])
+                CONF_ACTIVITY_DOORS, default=defaults.get(CONF_ACTIVITY_DOORS, [])
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain="binary_sensor",
@@ -124,7 +124,7 @@ class NightWatchmanConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             await self.async_set_unique_id(DOMAIN)
             self._abort_if_unique_id_configured()
-            user_input[CONF_MONITOR_ALL] = True
+            user_input[CONF_MONITOR_ALL] = False
             return self.async_create_entry(title="Night Watchman", data=user_input)
         return self.async_show_form(step_id="user", data_schema=_schedule_schema({}))
 
@@ -152,7 +152,7 @@ class NightWatchmanOptionsFlow(OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Edit the main settings."""
         if user_input is not None:
-            user_input[CONF_MONITOR_ALL] = True
+            user_input[CONF_MONITOR_ALL] = False
             return self.async_create_entry(data=user_input)
         current = {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(step_id="init", data_schema=_schedule_schema(current))
