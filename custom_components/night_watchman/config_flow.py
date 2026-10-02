@@ -128,12 +128,19 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
 
 
 def _clean_notify(value: Any) -> str | None:
+    """Accept one service or a comma-separated list. Store a cleaned list string."""
     if not isinstance(value, str):
         return None
-    name = value.strip().removeprefix("notify.").strip()
-    if not _NOTIFY_SERVICE.fullmatch(name):
-        return None
-    return name
+    names: list[str] = []
+    for part in value.split(","):
+        name = part.strip().removeprefix("notify.").strip()
+        if not name:
+            continue
+        if not _NOTIFY_SERVICE.fullmatch(name):
+            return None
+        if name not in names:
+            names.append(name)
+    return ", ".join(names) if names else None
 
 
 def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:

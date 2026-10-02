@@ -173,13 +173,20 @@ def _slot_value(options: dict[str, Any], key: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _notify_service_name(value: Any) -> str | None:
+def _notify_service_names(value: Any) -> list[str] | None:
+    """One service, or several separated by commas. Leave off the notify. prefix."""
     if not isinstance(value, str) or not value.strip():
-        return "phones_group"
-    name = value.strip().removeprefix("notify.").strip()
-    if not _NOTIFY_SERVICE.fullmatch(name):
-        return None
-    return name
+        return ["phones_group"]
+    names: list[str] = []
+    for part in value.split(","):
+        name = part.strip().removeprefix("notify.").strip()
+        if not name:
+            continue
+        if not _NOTIFY_SERVICE.fullmatch(name):
+            return None
+        if name not in names:
+            names.append(name)
+    return names or None
 
 
 def _is_overhead(hass: HomeAssistant, entity_id: str) -> bool:
@@ -225,23 +232,24 @@ def _recent_activity_names(
 
 
 async def _notify(hass: HomeAssistant, options: dict[str, Any], message: str) -> None:
-    """Send a phone notice after every round."""
-    service = _notify_service_name(options.get(CONF_NOTIFY_SERVICE))
-    if service is None:
+    """Send a notice after every round to each configured notify service."""
+    services = _notify_service_names(options.get(CONF_NOTIFY_SERVICE))
+    if not services:
         _LOGGER.error("Night Watchman notify service is not a plain service name")
         return
-    if not hass.services.has_service("notify", service):
-        _LOGGER.error("Night Watchman notify service notify.%s is not available", service)
-        return
-    try:
-        await hass.services.async_call(
-            "notify",
-            service,
-            {"title": "Night watchman", "message": message},
-            blocking=False,
-        )
-    except Exception:
-        _LOGGER.exception("Night Watchman could not notify %s", service)
+    for service in services:
+        if not hass.services.has_service("notify", service):
+            _LOGGER.error("Night Watchman notify service notify.%s is not available", service)
+            continue
+        try:
+            await hass.services.async_call(
+                "notify",
+                service,
+                {"title": "Night watchman", "message": message},
+                blocking=False,
+            )
+        except Exception:
+            _LOGGER.exception("Night Watchman could not notify %s", service)
 
 
 class NightWatchmanRuntime:

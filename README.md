@@ -49,7 +49,7 @@ These times are remembered across a Home Assistant restart. Turning lights off d
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.14`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.15`, …), not the tip of `main`.
 
 ### Manual
 
@@ -64,7 +64,7 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | First round / Last round | When rounds are allowed. The default is 1:00 AM through 5:00 AM, including both times. |
 | Minutes between rounds | How often a round is attempted inside that window. The default is 60, so a 1:00 start runs at 1, 2, 3, 4, and 5. |
 | Quiet period | How long every monitored device must stay unchanged before a round proceeds. The default is 45 minutes. |
-| Notify service | The notify service name, for example `phones_group`. Leave off the `notify.` prefix. A notice is sent after every round. |
+| Notify service | Where notices go. One name, or several separated by commas, for example `phones_group` or `phones_group, tablet`. Leave off the `notify.` prefix. A notice is sent after every round. |
 | Monitored Lights | A recent on or off skips the round. These lights are also turned off when **Turn Off All Monitored Lights** is selected. |
 | Monitored Motion Sensors | A recent motion change skips the round. Indoor cameras belong here if you want them counted. |
 | Monitored Doors | A recent open or close skips the round. This list does not lock or close anything. |
@@ -79,4 +79,4 @@ Do not add the garage overhead door. Night Watchman will refuse to lock a device
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.14` is tag `v1.0.14`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.15` is tag `v1.0.15`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
