@@ -53,7 +53,7 @@
           "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
           "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
           "contact_entity_1": "Do not use the garage overhead door.",
-          "notify_service": "Service under Developer Tools, for example phones_group."
+          "notify_service": "Service under Developer Tools, for example phones_group. A notice is sent after every round."
         }
       }
     }
@@ -113,7 +113,7 @@
           "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
           "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
           "contact_entity_1": "Do not use the garage overhead door.",
-          "notify_service": "Service under Developer Tools, for example phones_group."
+          "notify_service": "Service under Developer Tools, for example phones_group. A notice is sent after every round."
         },
         "data": {
           "start": "First round",

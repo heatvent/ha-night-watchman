@@ -43,7 +43,7 @@ def _restored_time(value: object) -> datetime | None:
 
 
 class LastRoundSensor(RestoreSensor):
-    """When the last quiet round finished. A skipped round is not recorded."""
+    """When the last scheduled round was checked, including skipped and all clear."""
 
     _attr_has_entity_name = True
     _attr_name = "Last round"

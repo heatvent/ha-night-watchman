@@ -209,6 +209,41 @@ async def _call_entity(hass: HomeAssistant, domain: str, service: str, entity_id
     return True
 
 
+def _entity_name(hass: HomeAssistant, entity_id: str) -> str:
+    state = hass.states.get(entity_id)
+    return state.name if state else entity_id
+
+
+def _recent_activity_names(
+    hass: HomeAssistant, entity_ids: list[str], quiet: timedelta, now: datetime
+) -> list[str]:
+    names: list[str] = []
+    for entity_id in entity_ids:
+        if _changed_recently(hass, entity_id, quiet, now):
+            names.append(_entity_name(hass, entity_id))
+    return names
+
+
+async def _notify(hass: HomeAssistant, options: dict[str, Any], message: str) -> None:
+    """Send a phone notice after every round."""
+    service = _notify_service_name(options.get(CONF_NOTIFY_SERVICE))
+    if service is None:
+        _LOGGER.error("Night Watchman notify service is not a plain service name")
+        return
+    if not hass.services.has_service("notify", service):
+        _LOGGER.error("Night Watchman notify service notify.%s is not available", service)
+        return
+    try:
+        await hass.services.async_call(
+            "notify",
+            service,
+            {"title": "Night watchman", "message": message},
+            blocking=False,
+        )
+    except Exception:
+        _LOGGER.exception("Night Watchman could not notify %s", service)
+
+
 class NightWatchmanRuntime:
     """Shared state for the switch, sensors, and the night rounds."""
 
@@ -274,12 +309,16 @@ def _remember_activity(runtime: NightWatchmanRuntime, event: Event) -> None:
     )
 
 
-async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> str | None:
+async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> str:
+    """Run one round and always return a notice: skipped, all clear, or what changed."""
     options = _settings(entry)
     quiet = timedelta(minutes=_positive_int(options.get(CONF_QUIET_MINUTES), 45))
-    if any(_changed_recently(hass, entity_id, quiet, now) for entity_id in _activity_entities(options)):
-        _LOGGER.debug("Night Watchman skipped this round because the house is still active")
-        return None
+    activity = _activity_entities(options)
+    recent = _recent_activity_names(hass, activity, quiet, now)
+    if recent:
+        summary = "Skipped: the house is still active. Recent activity: " + ", ".join(recent) + "."
+        await _notify(hass, options, summary)
+        return summary
 
     locked: list[str] = []
     left_open: list[str] = []
@@ -338,26 +377,8 @@ async def _run_round(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> 
         parts.append("Turned off " + ", ".join(turned_off) + ".")
     if left_open:
         parts.append("Still open: " + ", ".join(left_open) + ".")
-    if not parts:
-        return "Nothing to do"
-
-    summary = " ".join(parts)
-    service = _notify_service_name(options.get(CONF_NOTIFY_SERVICE))
-    if service is None:
-        _LOGGER.error("Night Watchman notify service is not a plain service name")
-        return summary
-    if not hass.services.has_service("notify", service):
-        _LOGGER.error("Night Watchman notify service notify.%s is not available", service)
-        return summary
-    try:
-        await hass.services.async_call(
-            "notify",
-            service,
-            {"title": "Night watchman", "message": summary},
-            blocking=False,
-        )
-    except Exception:
-        _LOGGER.exception("Night Watchman could not notify %s", service)
+    summary = " ".join(parts) if parts else "All clear."
+    await _notify(hass, options, summary)
     return summary
 
 
@@ -390,12 +411,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
             summary = await _run_round(hass, entry, local)
         except Exception:
             _LOGGER.exception("Night Watchman round failed")
-            summary = None
+            summary = "Round failed. Check the Home Assistant log."
+            await _notify(hass, options, summary)
         finally:
             runtime.suppress_activity = False
             _ACTIVE_ROUNDS.discard(entry.entry_id)
-        if summary is not None:
-            runtime.record_round(local, summary)
+        runtime.record_round(local, summary)
 
     entry.async_on_unload(async_track_time_change(hass, _tick, second=10))
     watched = _activity_entities(_settings(entry))
