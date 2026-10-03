@@ -58,44 +58,6 @@
       }
     }
   },
-  "config_subentries": {
-    "lock_rule": {
-      "step": {
-        "user": {
-          "title": "Lock if the door is closed",
-          "description": "The lock is turned only when the contact is closed. An open contact is reported and left unlocked.",
-          "data": {
-            "lock_entity": "Lock Entity",
-            "contact_entity": "Door Contact"
-          }
-        },
-        "reconfigure": {
-          "title": "Lock if the door is closed",
-          "data": {
-            "lock_entity": "Lock Entity",
-            "contact_entity": "Door Contact"
-          }
-        }
-      }
-    },
-    "report_open": {
-      "step": {
-        "user": {
-          "title": "Report if open",
-          "description": "Included in the phone message when open. Nothing is closed or locked.",
-          "data": {
-            "contact_entity": "Contact"
-          }
-        },
-        "reconfigure": {
-          "title": "Report if open",
-          "data": {
-            "contact_entity": "Contact"
-          }
-        }
-      }
-    }
-  },
   "options": {
     "error": {
       "invalid_notify_service": "Use notify service names only, such as phones_group or phones_group, tablet."

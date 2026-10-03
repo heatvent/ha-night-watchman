@@ -11,7 +11,6 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    ConfigSubentryFlow,
     OptionsFlow,
 )
 from homeassistant.core import callback
@@ -189,15 +188,6 @@ class NightWatchmanConfigFlow(ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """Return the options flow."""
         return NightWatchmanOptionsFlow()
-
-    @classmethod
-    @callback
-    def async_get_supported_subentry_types(
-        cls, config_entry: ConfigEntry
-    ) -> dict[str, type[ConfigSubentryFlow]]:
-        """Lock pairs live on the main form, so there is nothing extra to add."""
-        return {}
-
 
 class NightWatchmanOptionsFlow(OptionsFlow):
     """Edit schedule, activity devices, and lights to turn off."""
