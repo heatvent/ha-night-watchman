@@ -21,6 +21,7 @@ CONF_TURN_OFF_ENTITIES = "turn_off_entities"
 CONF_LOCK_ENTITY = "lock_entity"
 CONF_CONTACT_ENTITY = "contact_entity"
 CONF_DOORS_TO_LOCK = "doors_to_lock"
+CONF_AWAY_ENABLED = "away_enabled"
 CONF_AWAY_PEOPLE = "away_people"
 CONF_PRESENCE_SIMULATION = "presence_simulation_switch"
 

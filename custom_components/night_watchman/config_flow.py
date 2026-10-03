@@ -21,6 +21,7 @@ from .const import (
     CONF_ACTIVITY_DOORS,
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
+    CONF_AWAY_ENABLED,
     CONF_AWAY_PEOPLE,
     CONF_DOORS_TO_LOCK,
     CONF_END,
@@ -133,22 +134,18 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
 
 
 def _away_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
-    """People who must all be away, and the optional Presence Simulation switch."""
-    presence_default = defaults.get(CONF_PRESENCE_SIMULATION)
-    if isinstance(defaults.get("when_everyone_away"), dict):
-        nested = defaults["when_everyone_away"]
-        people_default = nested.get(CONF_AWAY_PEOPLE, defaults.get(CONF_AWAY_PEOPLE, []))
-        nested_presence = nested.get(CONF_PRESENCE_SIMULATION)
-        if isinstance(nested_presence, str) and nested_presence:
-            presence_default = nested_presence
-    else:
-        people_default = defaults.get(CONF_AWAY_PEOPLE, [])
+    """Optional away path: people who must leave, and Presence Simulation handoff."""
+    nested = defaults.get("when_everyone_away") if isinstance(defaults.get("when_everyone_away"), dict) else {}
+    enabled_default = nested.get(CONF_AWAY_ENABLED, defaults.get(CONF_AWAY_ENABLED, False))
+    people_default = nested.get(CONF_AWAY_PEOPLE, defaults.get(CONF_AWAY_PEOPLE, []))
+    presence_default = nested.get(CONF_PRESENCE_SIMULATION, defaults.get(CONF_PRESENCE_SIMULATION))
     presence_field = (
         vol.Optional(CONF_PRESENCE_SIMULATION, default=presence_default)
         if isinstance(presence_default, str) and presence_default
         else vol.Optional(CONF_PRESENCE_SIMULATION)
     )
     return {
+        vol.Required(CONF_AWAY_ENABLED, default=bool(enabled_default)): selector.BooleanSelector(),
         vol.Optional(CONF_AWAY_PEOPLE, default=people_default or []): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="person", multiple=True)
         ),
@@ -188,14 +185,17 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     away = data.get("when_everyone_away")
     if not isinstance(away, dict):
         away = {}
+    enabled = bool(away.get(CONF_AWAY_ENABLED, data.get(CONF_AWAY_ENABLED, False)))
     people = away.get(CONF_AWAY_PEOPLE, data.get(CONF_AWAY_PEOPLE, []))
     if not isinstance(people, list):
         people = []
     presence = away.get(CONF_PRESENCE_SIMULATION) or data.get(CONF_PRESENCE_SIMULATION)
     presence = presence if isinstance(presence, str) and presence.startswith("switch.") else None
+    data[CONF_AWAY_ENABLED] = enabled
     data[CONF_AWAY_PEOPLE] = [item for item in people if isinstance(item, str) and item]
     data[CONF_PRESENCE_SIMULATION] = presence
     data["when_everyone_away"] = {
+        CONF_AWAY_ENABLED: enabled,
         CONF_AWAY_PEOPLE: data[CONF_AWAY_PEOPLE],
         CONF_PRESENCE_SIMULATION: presence,
     }

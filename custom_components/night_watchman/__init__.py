@@ -23,6 +23,7 @@ from .const import (
     CONF_ACTIVITY_ENTITIES,
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
+    CONF_AWAY_ENABLED,
     CONF_AWAY_PEOPLE,
     CONF_CONTACT_ENTITY,
     CONF_DOORS_TO_LOCK,
@@ -246,10 +247,23 @@ def _recent_activity_names(
     return names
 
 
-def _away_people(options: dict[str, Any]) -> list[str]:
+def _away_section(options: dict[str, Any]) -> dict[str, Any]:
     nested = options.get("when_everyone_away")
-    if isinstance(nested, dict) and CONF_AWAY_PEOPLE in nested:
-        return _unique(_as_list(nested.get(CONF_AWAY_PEOPLE)))
+    return nested if isinstance(nested, dict) else {}
+
+
+def _away_enabled(options: dict[str, Any]) -> bool:
+    """Optional away path. Off by default so other home/away automations stay in charge."""
+    section = _away_section(options)
+    if CONF_AWAY_ENABLED in section:
+        return bool(section.get(CONF_AWAY_ENABLED))
+    return bool(options.get(CONF_AWAY_ENABLED, False))
+
+
+def _away_people(options: dict[str, Any]) -> list[str]:
+    section = _away_section(options)
+    if CONF_AWAY_PEOPLE in section:
+        return _unique(_as_list(section.get(CONF_AWAY_PEOPLE)))
     return _unique(_as_list(options.get(CONF_AWAY_PEOPLE)))
 
 
@@ -270,10 +284,8 @@ def _everyone_away(hass: HomeAssistant, people: list[str]) -> bool:
 
 
 def _presence_switch(options: dict[str, Any]) -> str | None:
-    nested = options.get("when_everyone_away")
-    value = None
-    if isinstance(nested, dict):
-        value = nested.get(CONF_PRESENCE_SIMULATION)
+    section = _away_section(options)
+    value = section.get(CONF_PRESENCE_SIMULATION)
     if not isinstance(value, str) or not value:
         value = options.get(CONF_PRESENCE_SIMULATION)
     if isinstance(value, str) and value.startswith("switch."):
@@ -518,15 +530,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def _secure_away(_now: datetime | None = None) -> None:
-        """After everyone leaves and the house is quiet, secure once, then start presence simulation."""
+        """Everyone left: one quiet secure round, then optionally start Presence Simulation."""
         runtime._away_retry = None
         if not runtime.enabled:
             return
         options = _settings(entry)
+        if not _away_enabled(options):
+            return
         people = _away_people(options)
         if not people or not _everyone_away(hass, people):
             return
-        if _presence_is_on(hass, options) or runtime.away_secured:
+        if runtime.away_secured or _presence_is_on(hass, options):
             runtime.away_secured = True
             return
         local = dt_util.as_local(dt_util.utcnow())
@@ -542,15 +556,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
             quiet_seconds = _positive_int(options.get(CONF_QUIET_MINUTES), 45) * 60
             runtime._away_retry = async_call_later(hass, quiet_seconds, _secure_away)
             return
-        if await _set_presence(hass, options, True):
-            runtime.away_secured = True
+        runtime.away_secured = True
+        if _presence_switch(options) and await _set_presence(hass, options, True):
             runtime.record_round(local, summary + " Presence simulation started.")
             await _notify(hass, options, "Presence simulation started.")
-        else:
-            runtime.away_secured = True
 
     async def _people_changed(_event: Event) -> None:
         options = _settings(entry)
+        if not _away_enabled(options):
+            return
         people = _away_people(options)
         if not people:
             return
@@ -567,10 +581,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
         runtime.cancel_away_retry()
         was_secured = runtime.away_secured or _presence_is_on(hass, options)
         runtime.away_secured = False
-        if was_secured and await _set_presence(hass, options, False):
+        if was_secured and _presence_switch(options) and await _set_presence(hass, options, False):
             _LOGGER.info("Night Watchman stopped presence simulation because someone came home")
 
     async def _tick(now: datetime) -> None:
+        """Night schedule only. Away securing is triggered by people leaving, not by the clock."""
         if not runtime.enabled:
             return
         local = dt_util.as_local(now)
@@ -581,56 +596,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
         if start is None or end is None:
             _LOGGER.error("Night Watchman has an invalid schedule")
             return
-
-        people = _away_people(options)
-        away = _everyone_away(hass, people)
-        presence_on = _presence_is_on(hass, options)
-        now_m = local.hour * 60 + local.minute
-        night_due = round_is_due(now_m, start, end, interval)
-        away_locks_due = bool(people) and away and (presence_on or runtime.away_secured) and now_m % interval == 0
-
-        if people and not away and (runtime.away_secured or presence_on):
-            runtime.cancel_away_retry()
-            runtime.away_secured = False
-            await _set_presence(hass, options, False)
-
-        if night_due:
-            if away and (presence_on or runtime.away_secured):
-                await _execute_round(
-                    hass,
-                    entry,
-                    runtime,
-                    local,
-                    turn_off_lights=False,
-                    check_light_activity=False,
-                )
-            else:
-                summary = await _execute_round(
-                    hass,
-                    entry,
-                    runtime,
-                    local,
-                    turn_off_lights=True,
-                    check_light_activity=True,
-                )
-                if away and not _was_skipped(summary):
-                    if await _set_presence(hass, options, True):
-                        runtime.away_secured = True
-                        runtime.record_round(local, summary + " Presence simulation started.")
-                        await _notify(hass, options, "Presence simulation started.")
-                    else:
-                        runtime.away_secured = True
+        if not round_is_due(local.hour * 60 + local.minute, start, end, interval):
             return
 
-        if away_locks_due:
-            await _execute_round(
-                hass,
-                entry,
-                runtime,
-                local,
-                turn_off_lights=False,
-                check_light_activity=False,
-            )
+        # Leave the house alone while the optional away path / Presence Simulation owns it.
+        if (
+            _away_enabled(options)
+            and _away_people(options)
+            and _everyone_away(hass, _away_people(options))
+            and (runtime.away_secured or _presence_is_on(hass, options))
+        ):
+            _LOGGER.debug("Night Watchman skipped the night round because everyone is away")
+            return
+
+        await _execute_round(
+            hass,
+            entry,
+            runtime,
+            local,
+            turn_off_lights=True,
+            check_light_activity=True,
+        )
 
     entry.async_on_unload(async_track_time_change(hass, _tick, second=10))
     watched = _activity_entities(_settings(entry))

@@ -19,11 +19,11 @@ When a full round runs:
 - An open door is left alone and named in the phone message. Nothing is closed.
 - The garage overhead door is never locked.
 
-### Away during the day
+### Away when everyone leaves
 
-Pick the people who must all be away. After the quiet period, Night Watchman runs one full secure round with the same lights and doors. If you also pick a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch, that switch is turned on afterward.
+This path is optional and off by default, so existing home and away automations are left alone.
 
-While Presence Simulation is on, later rounds on the same interval only check doors and locks. Lights are left alone so the simulation can keep running. Light changes from Presence Simulation do not count as activity for those lock-only rounds. When someone comes home, Night Watchman turns the Presence Simulation switch off.
+Turn on **Secure When Everyone Is Away**, pick the people who must all be away, and optionally pick a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch. When the last person leaves, Night Watchman waits for the quiet period, runs one secure round with the same lights and doors, then turns that Presence Simulation switch on. When someone comes home, it turns Presence Simulation off. There is no daytime clock schedule for this path — people leaving is the trigger. Night rounds are skipped while that away path has already secured the house.
 
 A phone notice goes out after every round:
 
@@ -78,8 +78,9 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Lights to Keep On | Bedrooms, lamps, and anything that must stay on even when the box above is selected. |
 | Other Lights/Devices to Turn Off | Extra lights or switches, such as a coffee maker or 3D printer. Leave washer, dryer, and power strips off this list. |
 | Doors to Lock | Up to four lock and contact pairs. The lock runs only when that contact is closed and the lock is unlocked. An open contact is reported and left unlocked. |
-| People Who Must Be Away | Optional. When every person here is away, a secure round runs after the quiet period. Leave empty to keep Night Watchman night-only. |
-| Presence Simulation Switch | Optional. Turned on after the first successful away secure round. Later rounds skip lights and only check doors. Turned off when someone comes home. |
+| Secure When Everyone Is Away | Off by default. When on, leaving the house triggers one secure round after the quiet period. |
+| People Who Must Be Away | Used only when the box above is on. Every person here must be away. |
+| Presence Simulation Switch | Optional. Turned on after that secure round. Turned off when someone comes home. |
 
 Do not add the garage overhead door. Night Watchman will refuse to lock a device whose name says overhead, and it never closes a cover.
 
