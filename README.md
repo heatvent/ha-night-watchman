@@ -1,6 +1,6 @@
 # Night Watchman
 
-[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/heatvent/ha-night-watchman)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/v/release/heatvent/ha-night-watchman)](https://github.com/heatvent/ha-night-watchman/releases)
 [![HA](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-blue.svg)](https://www.home-assistant.io/)
 
@@ -49,7 +49,7 @@ These times are remembered across a Home Assistant restart. Turning lights off d
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.15`, …), not the tip of `main`.
+HACS follows **GitHub Releases** (`v1.0.16`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 ### Manual
 
@@ -77,6 +77,17 @@ Do not add the garage overhead door. Night Watchman will refuse to lock a device
 
 ---
 
+## Support
+
+- Repository: [github.com/heatvent/ha-night-watchman](https://github.com/heatvent/ha-night-watchman)
+- Issues: [github.com/heatvent/ha-night-watchman/issues](https://github.com/heatvent/ha-night-watchman/issues)
+
+## Credits
+
+Developed with [Cursor](https://cursor.com).
+
+---
+
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.15` is tag `v1.0.15`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.16` is tag `v1.0.16`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
