@@ -49,9 +49,13 @@ class NightWatchmanSwitch(SwitchEntity, RestoreEntity):
         self._runtime.enabled = True
         self._attr_is_on = True
         self.async_write_ha_state()
+        if self._runtime.on_enabled_change is not None:
+            await self._runtime.on_enabled_change(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Skip rounds until this is turned back on."""
         self._runtime.enabled = False
         self._attr_is_on = False
         self.async_write_ha_state()
+        if self._runtime.on_enabled_change is not None:
+            await self._runtime.on_enabled_change(False)

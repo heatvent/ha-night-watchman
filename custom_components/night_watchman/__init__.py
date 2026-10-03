@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -19,10 +21,13 @@ from homeassistant.helpers.event import (
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    AWAY_ALARM_MODES,
     CONF_ACTIVITY_DOORS,
     CONF_ACTIVITY_ENTITIES,
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
+    CONF_AWAY_ALARM,
+    CONF_AWAY_ALARM_MODE,
     CONF_AWAY_ENABLED,
     CONF_AWAY_PEOPLE,
     CONF_CONTACT_ENTITY,
@@ -37,6 +42,7 @@ from .const import (
     CONF_QUIET_MINUTES,
     CONF_START,
     CONF_TURN_OFF_ENTITIES,
+    DEFAULT_AWAY_ALARM_MODE,
     DOMAIN,
     LOCK_SLOTS,
     PLATFORMS,
@@ -53,9 +59,32 @@ _TURN_OFF_DOMAINS = frozenset({"light", "switch"})
 _HOME_STATES = frozenset({STATE_HOME, "home"})
 _AWAY_STATES = frozenset({STATE_NOT_HOME, "not_home", "away"})
 _IGNORED_ACTIVITY = frozenset({STATE_UNAVAILABLE, STATE_UNKNOWN, "none", ""})
+_ALARM_ARMED_PREFIX = "armed_"
+_ALARM_ARM_SERVICES = {
+    "away": "alarm_arm_away",
+    "home": "alarm_arm_home",
+    "night": "alarm_arm_night",
+    "vacation": "alarm_arm_vacation",
+}
+_SELF_ACTION_GRACE = timedelta(seconds=5)
+_STARTUP_GRACE = timedelta(seconds=30)
+_ALARM_CONFIRM_ATTEMPTS = 12
+_ALARM_CONFIRM_DELAY = 0.25
 _ACTIVE_ROUNDS: set[str] = set()
 
 type WatchmanConfigEntry = ConfigEntry
+
+
+@dataclass
+class RoundOutcome:
+    """Result of one secure round."""
+
+    summary: str
+    left_open: list[str] = field(default_factory=list)
+
+    @property
+    def skipped(self) -> bool:
+        return self.summary.startswith("Skipped:")
 
 
 def _settings(entry: ConfigEntry) -> dict[str, Any]:
@@ -172,11 +201,24 @@ def _turn_off_entities(options: dict[str, Any]) -> list[str]:
     ]
 
 
-def _changed_recently(hass: HomeAssistant, entity_id: str, quiet: timedelta, now: datetime) -> bool:
+def _changed_recently(
+    hass: HomeAssistant,
+    entity_id: str,
+    quiet: timedelta,
+    now: datetime,
+    runtime: NightWatchmanRuntime,
+) -> bool:
+    """True when this entity changed recently for a reason other than NW or startup."""
     state = hass.states.get(entity_id)
     if state is None or state.last_changed is None:
         return False
-    return dt_util.as_local(state.last_changed) > now - quiet
+    changed = dt_util.as_local(state.last_changed)
+    if runtime.started_at is not None and changed <= runtime.started_at + _STARTUP_GRACE:
+        return False
+    acted = runtime.self_actions.get(entity_id)
+    if acted is not None and changed <= acted + _SELF_ACTION_GRACE:
+        return False
+    return changed > now - quiet
 
 
 def _slot_value(options: dict[str, Any], key: str) -> str | None:
@@ -238,11 +280,15 @@ def _entity_name(hass: HomeAssistant, entity_id: str) -> str:
 
 
 def _recent_activity_names(
-    hass: HomeAssistant, entity_ids: list[str], quiet: timedelta, now: datetime
+    hass: HomeAssistant,
+    entity_ids: list[str],
+    quiet: timedelta,
+    now: datetime,
+    runtime: NightWatchmanRuntime,
 ) -> list[str]:
     names: list[str] = []
     for entity_id in entity_ids:
-        if _changed_recently(hass, entity_id, quiet, now):
+        if _changed_recently(hass, entity_id, quiet, now, runtime):
             names.append(_entity_name(hass, entity_id))
     return names
 
@@ -309,6 +355,80 @@ async def _set_presence(hass: HomeAssistant, options: dict[str, Any], turn_on: b
     return await _call_entity(hass, "switch", service, switch_id)
 
 
+def _away_alarm(options: dict[str, Any]) -> str | None:
+    section = _away_section(options)
+    value = section.get(CONF_AWAY_ALARM)
+    if not isinstance(value, str) or not value:
+        value = options.get(CONF_AWAY_ALARM)
+    if isinstance(value, str) and value.startswith("alarm_control_panel."):
+        return value
+    return None
+
+
+def _away_alarm_mode(options: dict[str, Any]) -> str:
+    section = _away_section(options)
+    value = section.get(CONF_AWAY_ALARM_MODE, options.get(CONF_AWAY_ALARM_MODE, DEFAULT_AWAY_ALARM_MODE))
+    return value if value in AWAY_ALARM_MODES else DEFAULT_AWAY_ALARM_MODE
+
+
+def _alarm_matches_away_mode(hass: HomeAssistant, options: dict[str, Any]) -> bool:
+    """True when the selected alarm is armed in the configured away mode (not a night/home arm)."""
+    alarm_id = _away_alarm(options)
+    if not alarm_id:
+        return False
+    state = hass.states.get(alarm_id)
+    if state is None:
+        return False
+    return state.state.strip().casefold() == f"armed_{_away_alarm_mode(options)}"
+
+
+def _away_already_secured(hass: HomeAssistant, runtime: NightWatchmanRuntime, options: dict[str, Any]) -> bool:
+    """True when this away pass already finished, or PS/alarm still show the house secured."""
+    return (
+        runtime.away_secured
+        or _presence_is_on(hass, options)
+        or _alarm_matches_away_mode(hass, options)
+    )
+
+
+def _should_disarm_alarm(hass: HomeAssistant, runtime: NightWatchmanRuntime, options: dict[str, Any]) -> bool:
+    """Disarm only when NW armed it, or after restart when Away-mode arm is still active."""
+    if runtime.away_alarm_managed:
+        return True
+    return _away_alarm_mode(options) == DEFAULT_AWAY_ALARM_MODE and _alarm_matches_away_mode(hass, options)
+
+
+async def _set_alarm(hass: HomeAssistant, options: dict[str, Any], arm: bool) -> bool:
+    """Arm or disarm the selected alarm. Confirms the resulting state."""
+    alarm_id = _away_alarm(options)
+    if not alarm_id:
+        return False
+    mode = _away_alarm_mode(options)
+    expected = f"armed_{mode}" if arm else "disarmed"
+    state = hass.states.get(alarm_id)
+    if state is None or state.state in _IGNORED_ACTIVITY:
+        _LOGGER.error("Night Watchman alarm %s is not available", alarm_id)
+        return False
+    token = state.state.strip().casefold()
+    if token == expected:
+        return True
+    if arm:
+        if token.startswith(_ALARM_ARMED_PREFIX) or token in {"arming", "pending"}:
+            return False
+        service = _ALARM_ARM_SERVICES[mode]
+    else:
+        service = "alarm_disarm"
+    if not await _call_entity(hass, "alarm_control_panel", service, alarm_id):
+        return False
+    for _ in range(_ALARM_CONFIRM_ATTEMPTS):
+        await asyncio.sleep(_ALARM_CONFIRM_DELAY)
+        current = hass.states.get(alarm_id)
+        if current is not None and current.state.strip().casefold() == expected:
+            return True
+    _LOGGER.error("Night Watchman alarm %s did not reach %s", alarm_id, expected)
+    return False
+
+
 async def _notify(hass: HomeAssistant, options: dict[str, Any], message: str) -> None:
     """Send a notice after every round to each configured notify service."""
     services = _notify_service_names(options.get(CONF_NOTIFY_SERVICE))
@@ -338,13 +458,22 @@ class NightWatchmanRuntime:
         self.enabled = True
         self.suppress_activity = False
         self.away_secured = False
+        self.away_alarm_managed = False
+        self.started_at = dt_util.as_local(dt_util.utcnow())
+        self.self_actions: dict[str, datetime] = {}
         self._away_retry: Callable[[], None] | None = None
+        self.on_enabled_change: Callable[[bool], Awaitable[None]] | None = None
         self.last_round: datetime | None = None
         self.last_round_summary: str | None = None
         self.last_activity: datetime | None = None
         self.last_activity_entity: str | None = None
         self.last_activity_name: str | None = None
         self._listeners: list[Callable[[], None]] = []
+
+    @property
+    def away_wait_pending(self) -> bool:
+        """True while the quiet timer for the away secure pass is running."""
+        return self._away_retry is not None
 
     @callback
     def add_listener(self, update: Callable[[], None]) -> Callable[[], None]:
@@ -362,6 +491,16 @@ class NightWatchmanRuntime:
         if self._away_retry is not None:
             self._away_retry()
             self._away_retry = None
+
+    @callback
+    def note_self_action(self, entity_id: str, when: datetime | None = None) -> None:
+        """Remember a change Night Watchman made so it does not trip the quiet gate."""
+        acted = when or dt_util.as_local(dt_util.utcnow())
+        self.self_actions[entity_id] = acted
+        cutoff = acted - timedelta(hours=6)
+        self.self_actions = {
+            entity: stamp for entity, stamp in self.self_actions.items() if stamp >= cutoff
+        }
 
     @callback
     def record_activity(self, entity_id: str, name: str, when: datetime) -> None:
@@ -400,27 +539,30 @@ def _remember_activity(runtime: NightWatchmanRuntime, event: Event) -> None:
     )
 
 
-def _was_skipped(summary: str) -> bool:
-    return summary.startswith("Skipped:")
+def _stamp_self_action(hass: HomeAssistant, runtime: NightWatchmanRuntime, entity_id: str, now: datetime) -> None:
+    state = hass.states.get(entity_id)
+    when = dt_util.as_local(state.last_changed) if state is not None and state.last_changed else now
+    runtime.note_self_action(entity_id, when)
 
 
 async def _run_round(
     hass: HomeAssistant,
     entry: ConfigEntry,
+    runtime: NightWatchmanRuntime,
     now: datetime,
     *,
     turn_off_lights: bool = True,
     check_light_activity: bool = True,
-) -> str:
+) -> RoundOutcome:
     """Run one round and always return a notice: skipped, all clear, or what changed."""
     options = _settings(entry)
     quiet = timedelta(minutes=_positive_int(options.get(CONF_QUIET_MINUTES), 45))
     activity = _activity_entities(options, include_lights=check_light_activity)
-    recent = _recent_activity_names(hass, activity, quiet, now)
+    recent = _recent_activity_names(hass, activity, quiet, now, runtime)
     if recent:
         summary = "Skipped: the house is still active. Recent activity: " + ", ".join(recent) + "."
         await _notify(hass, options, summary)
-        return summary
+        return RoundOutcome(summary=summary)
 
     locked: list[str] = []
     left_open: list[str] = []
@@ -461,6 +603,7 @@ async def _run_round(
             continue
         if await _call_entity(hass, "lock", "lock", lock_entity):
             locked.append(name)
+            _stamp_self_action(hass, runtime, lock_entity, now)
         seen_locks.add(lock_entity)
 
     turned_off: list[str] = []
@@ -472,6 +615,7 @@ async def _run_round(
             domain = entity_id.split(".", 1)[0]
             if await _call_entity(hass, domain, "turn_off", entity_id):
                 turned_off.append(state.name or entity_id)
+                _stamp_self_action(hass, runtime, entity_id, now)
 
     parts: list[str] = []
     if locked:
@@ -487,7 +631,7 @@ async def _run_round(
         if not turn_off_lights:
             summary += " Lights left for presence simulation."
     await _notify(hass, options, summary)
-    return summary
+    return RoundOutcome(summary=summary, left_open=left_open)
 
 
 async def _execute_round(
@@ -498,16 +642,17 @@ async def _execute_round(
     *,
     turn_off_lights: bool,
     check_light_activity: bool,
-) -> str:
+) -> RoundOutcome:
     if entry.entry_id in _ACTIVE_ROUNDS:
-        return "Skipped: another round is still running."
+        return RoundOutcome(summary="Skipped: another round is still running.")
     options = _settings(entry)
     _ACTIVE_ROUNDS.add(entry.entry_id)
     runtime.suppress_activity = True
     try:
-        summary = await _run_round(
+        outcome = await _run_round(
             hass,
             entry,
+            runtime,
             now,
             turn_off_lights=turn_off_lights,
             check_light_activity=check_light_activity,
@@ -516,11 +661,12 @@ async def _execute_round(
         _LOGGER.exception("Night Watchman round failed")
         summary = "Round failed. Check the Home Assistant log."
         await _notify(hass, options, summary)
+        outcome = RoundOutcome(summary=summary)
     finally:
         runtime.suppress_activity = False
         _ACTIVE_ROUNDS.discard(entry.entry_id)
-    runtime.record_round(now, summary)
-    return summary
+    runtime.record_round(now, outcome.summary)
+    return outcome
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> bool:
@@ -529,8 +675,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    def _quiet_seconds(options: dict[str, Any]) -> int:
+        return _positive_int(options.get(CONF_QUIET_MINUTES), 45) * 60
+
+    def _schedule_away_secure(options: dict[str, Any]) -> None:
+        if runtime._away_retry is not None:
+            return
+        runtime._away_retry = async_call_later(hass, _quiet_seconds(options), _secure_away)
+
     async def _secure_away(_now: datetime | None = None) -> None:
-        """Everyone left: one quiet secure round, then optionally start Presence Simulation."""
+        """Everyone left: one quiet secure round, then optionally arm and start Presence Simulation."""
         runtime._away_retry = None
         if not runtime.enabled:
             return
@@ -540,11 +694,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
         people = _away_people(options)
         if not people or not _everyone_away(hass, people):
             return
-        if runtime.away_secured or _presence_is_on(hass, options):
+        if _away_already_secured(hass, runtime, options):
             runtime.away_secured = True
             return
         local = dt_util.as_local(dt_util.utcnow())
-        summary = await _execute_round(
+        outcome = await _execute_round(
             hass,
             entry,
             runtime,
@@ -552,14 +706,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
             turn_off_lights=True,
             check_light_activity=True,
         )
-        if _was_skipped(summary):
-            quiet_seconds = _positive_int(options.get(CONF_QUIET_MINUTES), 45) * 60
-            runtime._away_retry = async_call_later(hass, quiet_seconds, _secure_away)
+        if outcome.skipped:
+            _schedule_away_secure(options)
             return
         runtime.away_secured = True
+        follow_ups: list[str] = []
+        if _away_alarm(options):
+            if outcome.left_open:
+                follow_ups.append("Alarm not armed: a door is still open.")
+                await _notify(hass, options, "Alarm not armed: a door is still open.")
+            elif await _set_alarm(hass, options, True):
+                runtime.away_alarm_managed = True
+                follow_ups.append("Alarm armed.")
+                await _notify(hass, options, "Alarm armed.")
+            else:
+                follow_ups.append("Alarm arm failed.")
+                await _notify(hass, options, "Alarm arm failed.")
         if _presence_switch(options) and await _set_presence(hass, options, True):
-            runtime.record_round(local, summary + " Presence simulation started.")
+            follow_ups.append("Presence simulation started.")
             await _notify(hass, options, "Presence simulation started.")
+        if follow_ups:
+            runtime.record_round(local, outcome.summary + " " + " ".join(follow_ups))
+
+    async def _schedule_away_if_needed() -> None:
+        """Start the away quiet wait when enabled, everyone is away, and not yet secured."""
+        if not runtime.enabled:
+            return
+        options = _settings(entry)
+        if not _away_enabled(options):
+            return
+        people = _away_people(options)
+        if not people or not _everyone_away(hass, people):
+            return
+        if _away_already_secured(hass, runtime, options):
+            runtime.away_secured = True
+            return
+        _schedule_away_secure(options)
+
+    async def _enabled_changed(enabled: bool) -> None:
+        if not enabled:
+            runtime.cancel_away_retry()
+            return
+        await _schedule_away_if_needed()
+
+    runtime.on_enabled_change = _enabled_changed
 
     async def _people_changed(_event: Event) -> None:
         options = _settings(entry)
@@ -569,20 +759,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
         if not people:
             return
         if _everyone_away(hass, people):
-            if runtime.away_secured or _presence_is_on(hass, options):
+            if not runtime.enabled:
+                return
+            if _away_already_secured(hass, runtime, options):
                 runtime.away_secured = True
                 return
-            if runtime._away_retry is not None:
-                return
-            quiet_seconds = _positive_int(options.get(CONF_QUIET_MINUTES), 45) * 60
-            runtime._away_retry = async_call_later(hass, quiet_seconds, _secure_away)
+            _schedule_away_secure(options)
             return
 
         runtime.cancel_away_retry()
-        was_secured = runtime.away_secured or _presence_is_on(hass, options)
+        presence_on = _presence_is_on(hass, options)
+        should_disarm = _should_disarm_alarm(hass, runtime, options)
+        was_secured = runtime.away_secured or presence_on or should_disarm
         runtime.away_secured = False
-        if was_secured and _presence_switch(options) and await _set_presence(hass, options, False):
+        if not was_secured:
+            return
+        if should_disarm and _away_alarm(options):
+            if await _set_alarm(hass, options, False):
+                _LOGGER.info("Night Watchman disarmed the alarm because someone came home")
+                await _notify(hass, options, "Alarm disarmed.")
+            runtime.away_alarm_managed = False
+        if _presence_switch(options) and await _set_presence(hass, options, False):
             _LOGGER.info("Night Watchman stopped presence simulation because someone came home")
+            await _notify(hass, options, "Presence simulation stopped.")
 
     async def _tick(now: datetime) -> None:
         """Night schedule only. Away securing is triggered by people leaving, not by the clock."""
@@ -599,12 +798,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
         if not round_is_due(local.hour * 60 + local.minute, start, end, interval):
             return
 
-        # Leave the house alone while the optional away path / Presence Simulation owns it.
+        # Leave the house alone while the away path owns it (secured, or quiet wait in progress).
         if (
             _away_enabled(options)
             and _away_people(options)
             and _everyone_away(hass, _away_people(options))
-            and (runtime.away_secured or _presence_is_on(hass, options))
+            and (_away_already_secured(hass, runtime, options) or runtime.away_wait_pending)
         ):
             _LOGGER.debug("Night Watchman skipped the night round because everyone is away")
             return
@@ -634,6 +833,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
 
     entry.async_on_unload(entry.add_update_listener(_reload))
     entry.async_on_unload(runtime.cancel_away_retry)
+    await _schedule_away_if_needed()
     return True
 
 

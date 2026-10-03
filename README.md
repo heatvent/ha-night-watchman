@@ -42,10 +42,13 @@ When **Secure When Everyone Is Away** is on:
 2. When the last of those people leaves, Night Watchman waits for the quiet period.
 3. It runs **one** secure round with the same lights and doors as a night round.
 4. If that round was skipped because the house was still active, it waits another quiet period and tries again.
-5. After a successful round, if you set a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch, that switch is turned **on**.
-6. When someone comes home, that Presence Simulation switch is turned **off**.
+5. After a successful round, if you set an alarm panel and no lock-paired door was left open, that panel is armed (default mode: Away). Arming is confirmed before the notice is sent. Open doors skip arming and send a notice instead.
+6. After a successful round, if you set a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch, that switch is turned **on**.
+7. When someone comes home, that alarm is disarmed (when Night Watchman armed it, or after a restart when Away-mode arm is still active) and Presence Simulation is turned **off**.
 
-There is no daytime clock for this path. People leaving is the trigger. While the house is already secured by this away path, night rounds are skipped so Presence Simulation can keep control of the lights.
+There is no daytime clock for this path. People leaving is the trigger. While the house is already secured by this away path — Night Watchman finished the round, the quiet wait is in progress, Presence Simulation is on, or the selected alarm is armed in the chosen mode — night rounds are skipped so those systems can keep control.
+
+Night Watchman does not send an alarm code. If your panel requires a code for service calls, allow code-less arm and disarm in that alarm integration. Prefer **Arm Mode: Away** so a normal night/home arm is not mistaken for the away path.
 
 ### Notices
 
@@ -56,7 +59,9 @@ Every round sends a notice to the notify service(s) you configure:
 | Skipped | The house was still active. The recent devices are named. |
 | All clear | The round ran and nothing needed locking, turning off, or reporting. |
 | Actions | What changed: each lock, light or switch, and any door still open. |
-| Presence simulation started | Sent after a successful away secure round when that switch was turned on. |
+| Alarm armed / disarmed | Sent when the optional away alarm is armed after a secure round, or disarmed when someone comes home. |
+| Alarm not armed / arm failed | Sent when a door is still open, or the panel did not reach the expected armed state. |
+| Presence simulation started / stopped | Sent when that switch is turned on after a secure away round, or turned off when someone comes home. |
 
 Use one notify service name, or several separated by commas, for example `phones_group` or `phones_group, tablet`. Leave off the `notify.` prefix.
 
@@ -64,12 +69,12 @@ Use one notify service name, or several separated by commas, for example `phones
 
 | Entity | What it shows |
 |---|---|
-| Enabled | On allows rounds. Off skips night and away securing without removing the integration. |
+| Enabled | On allows rounds. Off cancels a pending away quiet wait and skips night and away securing without removing the integration. Turning it back on while everyone is still away starts a new quiet wait. |
 | Last round | When the last round was checked (night or away). The result text is in the attributes. |
 | Last activity | When a monitored light, motion sensor, or door last changed. |
 | Last active device | Which of those devices changed. |
 
-These times are remembered across a Home Assistant restart. Lights Night Watchman itself turns off during a round do not count as activity.
+These times are remembered across a Home Assistant restart. Lights and locks Night Watchman itself changes during a round do not count as activity for the quiet check. Entity changes that only reflect a Home Assistant restart are ignored for a short startup window so rounds are not skipped as “still active” right after boot.
 
 ---
 
@@ -82,7 +87,7 @@ These times are remembered across a Home Assistant restart. Lights Night Watchma
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.17`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.19`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon for custom integrations. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -109,6 +114,8 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Doors to Lock | Up to four lock and contact pairs. Lock only if unlocked and the contact is closed. |
 | Secure When Everyone Is Away | Off by default. When on, people leaving triggers one secure round after the quiet period. |
 | People Who Must Be Away | Used only when the box above is on. Every person here must be away. |
+| Alarm Panel | Optional. Armed after a successful away secure round when no paired door was left open. Disarmed when someone comes home. No code is sent. |
+| Arm Mode | Away, Home, Night, or Vacation. Default Away. Prefer Away. Only that armed state counts as “already secured” for skipping night rounds. |
 | Presence Simulation Switch | Optional. Turned on after a successful away secure round. Turned off when someone comes home. |
 
 Do not add the garage overhead door. Night Watchman will refuse to lock a device whose name says overhead, and it never closes a cover.
@@ -128,4 +135,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.17` is tag `v1.0.17`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.19` is tag `v1.0.19`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.

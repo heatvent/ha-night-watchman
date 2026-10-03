@@ -24,6 +24,11 @@ CONF_DOORS_TO_LOCK = "doors_to_lock"
 CONF_AWAY_ENABLED = "away_enabled"
 CONF_AWAY_PEOPLE = "away_people"
 CONF_PRESENCE_SIMULATION = "presence_simulation_switch"
+CONF_AWAY_ALARM = "away_alarm"
+CONF_AWAY_ALARM_MODE = "away_alarm_mode"
+
+AWAY_ALARM_MODES = ("away", "home", "night", "vacation")
+DEFAULT_AWAY_ALARM_MODE = "away"
 
 SUBENTRY_LOCK = "lock_rule"
 SUBENTRY_REPORT = "report_open"

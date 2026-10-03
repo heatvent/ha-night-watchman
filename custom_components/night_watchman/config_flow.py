@@ -18,9 +18,12 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
+    AWAY_ALARM_MODES,
     CONF_ACTIVITY_DOORS,
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
+    CONF_AWAY_ALARM,
+    CONF_AWAY_ALARM_MODE,
     CONF_AWAY_ENABLED,
     CONF_AWAY_PEOPLE,
     CONF_DOORS_TO_LOCK,
@@ -34,6 +37,7 @@ from .const import (
     CONF_QUIET_MINUTES,
     CONF_START,
     CONF_TURN_OFF_ENTITIES,
+    DEFAULT_AWAY_ALARM_MODE,
     DOMAIN,
     LOCK_SLOTS,
 )
@@ -134,20 +138,39 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
 
 
 def _away_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
-    """Optional away path: people who must leave, and Presence Simulation handoff."""
+    """Optional away path: people who must leave, alarm, and Presence Simulation handoff."""
     nested = defaults.get("when_everyone_away") if isinstance(defaults.get("when_everyone_away"), dict) else {}
     enabled_default = nested.get(CONF_AWAY_ENABLED, defaults.get(CONF_AWAY_ENABLED, False))
     people_default = nested.get(CONF_AWAY_PEOPLE, defaults.get(CONF_AWAY_PEOPLE, []))
     presence_default = nested.get(CONF_PRESENCE_SIMULATION, defaults.get(CONF_PRESENCE_SIMULATION))
+    alarm_default = nested.get(CONF_AWAY_ALARM, defaults.get(CONF_AWAY_ALARM))
+    mode_default = nested.get(CONF_AWAY_ALARM_MODE, defaults.get(CONF_AWAY_ALARM_MODE, DEFAULT_AWAY_ALARM_MODE))
+    if mode_default not in AWAY_ALARM_MODES:
+        mode_default = DEFAULT_AWAY_ALARM_MODE
     presence_field = (
         vol.Optional(CONF_PRESENCE_SIMULATION, default=presence_default)
         if isinstance(presence_default, str) and presence_default
         else vol.Optional(CONF_PRESENCE_SIMULATION)
     )
+    alarm_field = (
+        vol.Optional(CONF_AWAY_ALARM, default=alarm_default)
+        if isinstance(alarm_default, str) and alarm_default
+        else vol.Optional(CONF_AWAY_ALARM)
+    )
     return {
         vol.Required(CONF_AWAY_ENABLED, default=bool(enabled_default)): selector.BooleanSelector(),
         vol.Optional(CONF_AWAY_PEOPLE, default=people_default or []): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="person", multiple=True)
+        ),
+        alarm_field: selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="alarm_control_panel")
+        ),
+        vol.Required(CONF_AWAY_ALARM_MODE, default=mode_default): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=list(AWAY_ALARM_MODES),
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key=CONF_AWAY_ALARM_MODE,
+            )
         ),
         presence_field: selector.EntitySelector(selector.EntitySelectorConfig(domain="switch")),
     }
@@ -191,12 +214,20 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
         people = []
     presence = away.get(CONF_PRESENCE_SIMULATION) or data.get(CONF_PRESENCE_SIMULATION)
     presence = presence if isinstance(presence, str) and presence.startswith("switch.") else None
+    alarm = away.get(CONF_AWAY_ALARM) or data.get(CONF_AWAY_ALARM)
+    alarm = alarm if isinstance(alarm, str) and alarm.startswith("alarm_control_panel.") else None
+    mode = away.get(CONF_AWAY_ALARM_MODE, data.get(CONF_AWAY_ALARM_MODE, DEFAULT_AWAY_ALARM_MODE))
+    mode = mode if mode in AWAY_ALARM_MODES else DEFAULT_AWAY_ALARM_MODE
     data[CONF_AWAY_ENABLED] = enabled
     data[CONF_AWAY_PEOPLE] = [item for item in people if isinstance(item, str) and item]
     data[CONF_PRESENCE_SIMULATION] = presence
+    data[CONF_AWAY_ALARM] = alarm
+    data[CONF_AWAY_ALARM_MODE] = mode
     data["when_everyone_away"] = {
         CONF_AWAY_ENABLED: enabled,
         CONF_AWAY_PEOPLE: data[CONF_AWAY_PEOPLE],
+        CONF_AWAY_ALARM: alarm,
+        CONF_AWAY_ALARM_MODE: mode,
         CONF_PRESENCE_SIMULATION: presence,
     }
     service = _clean_notify(data.get(CONF_NOTIFY_SERVICE))
