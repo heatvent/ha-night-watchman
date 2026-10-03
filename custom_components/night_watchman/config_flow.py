@@ -21,6 +21,7 @@ from .const import (
     CONF_ACTIVITY_DOORS,
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
+    CONF_AWAY_PEOPLE,
     CONF_DOORS_TO_LOCK,
     CONF_END,
     CONF_INCLUDE_ACTIVITY_LIGHTS,
@@ -28,6 +29,7 @@ from .const import (
     CONF_KEEP_ON_LIGHTS,
     CONF_MONITOR_ALL,
     CONF_NOTIFY_SERVICE,
+    CONF_PRESENCE_SIMULATION,
     CONF_QUIET_MINUTES,
     CONF_START,
     CONF_TURN_OFF_ENTITIES,
@@ -122,8 +124,36 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
                 vol.Schema(_lock_slot_fields(defaults)),
                 {"collapsed": False},
             ),
+            vol.Required("when_everyone_away"): section(
+                vol.Schema(_away_fields(defaults)),
+                {"collapsed": False},
+            ),
         }
     )
+
+
+def _away_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
+    """People who must all be away, and the optional Presence Simulation switch."""
+    presence_default = defaults.get(CONF_PRESENCE_SIMULATION)
+    if isinstance(defaults.get("when_everyone_away"), dict):
+        nested = defaults["when_everyone_away"]
+        people_default = nested.get(CONF_AWAY_PEOPLE, defaults.get(CONF_AWAY_PEOPLE, []))
+        nested_presence = nested.get(CONF_PRESENCE_SIMULATION)
+        if isinstance(nested_presence, str) and nested_presence:
+            presence_default = nested_presence
+    else:
+        people_default = defaults.get(CONF_AWAY_PEOPLE, [])
+    presence_field = (
+        vol.Optional(CONF_PRESENCE_SIMULATION, default=presence_default)
+        if isinstance(presence_default, str) and presence_default
+        else vol.Optional(CONF_PRESENCE_SIMULATION)
+    )
+    return {
+        vol.Optional(CONF_AWAY_PEOPLE, default=people_default or []): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="person", multiple=True)
+        ),
+        presence_field: selector.EntitySelector(selector.EntitySelectorConfig(domain="switch")),
+    }
 
 
 def _clean_notify(value: Any) -> str | None:
@@ -155,6 +185,20 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
             stored = value if isinstance(value, str) and value else None
             stored_section[key] = stored
             data[key] = stored
+    away = data.get("when_everyone_away")
+    if not isinstance(away, dict):
+        away = {}
+    people = away.get(CONF_AWAY_PEOPLE, data.get(CONF_AWAY_PEOPLE, []))
+    if not isinstance(people, list):
+        people = []
+    presence = away.get(CONF_PRESENCE_SIMULATION) or data.get(CONF_PRESENCE_SIMULATION)
+    presence = presence if isinstance(presence, str) and presence.startswith("switch.") else None
+    data[CONF_AWAY_PEOPLE] = [item for item in people if isinstance(item, str) and item]
+    data[CONF_PRESENCE_SIMULATION] = presence
+    data["when_everyone_away"] = {
+        CONF_AWAY_PEOPLE: data[CONF_AWAY_PEOPLE],
+        CONF_PRESENCE_SIMULATION: presence,
+    }
     service = _clean_notify(data.get(CONF_NOTIFY_SERVICE))
     data[CONF_NOTIFY_SERVICE] = service or "phones_group"
     data[CONF_DOORS_TO_LOCK] = stored_section

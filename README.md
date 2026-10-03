@@ -8,16 +8,22 @@
 
 ![Night Watchman](https://raw.githubusercontent.com/heatvent/ha-night-watchman/main/custom_components/night_watchman/icon.png)
 
-The Night Watchman checks on your house to make sure it is secure and that all lights are turned off after everyone has gone to bed.
+The Night Watchman checks on your house to make sure it is secure and that all lights are turned off after everyone has gone to bed — and, if you want, after everyone has left for the day.
 
 It makes a round only when the house has been quiet. If someone is still up, it waits and tries again later. A light that is simply left on does not count as activity. Only a recent change does: a light switched, motion, or a door opened or closed. You choose every device. A new light, sensor, or switch is ignored until you add it.
 
-When a round does run:
+When a full round runs:
 
 - Monitored lights that are still on are turned off, plus any extra lights or switches you picked, such as a coffee maker.
 - Each lock is locked only when it is unlocked and its door contact is closed.
 - An open door is left alone and named in the phone message. Nothing is closed.
 - The garage overhead door is never locked.
+
+### Away during the day
+
+Pick the people who must all be away. After the quiet period, Night Watchman runs one full secure round with the same lights and doors. If you also pick a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch, that switch is turned on afterward.
+
+While Presence Simulation is on, later rounds on the same interval only check doors and locks. Lights are left alone so the simulation can keep running. Light changes from Presence Simulation do not count as activity for those lock-only rounds. When someone comes home, Night Watchman turns the Presence Simulation switch off.
 
 A phone notice goes out after every round:
 
@@ -49,7 +55,7 @@ These times are remembered across a Home Assistant restart. Turning lights off d
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.16`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.17`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 ### Manual
 
@@ -72,6 +78,8 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Lights to Keep On | Bedrooms, lamps, and anything that must stay on even when the box above is selected. |
 | Other Lights/Devices to Turn Off | Extra lights or switches, such as a coffee maker or 3D printer. Leave washer, dryer, and power strips off this list. |
 | Doors to Lock | Up to four lock and contact pairs. The lock runs only when that contact is closed and the lock is unlocked. An open contact is reported and left unlocked. |
+| People Who Must Be Away | Optional. When every person here is away, a secure round runs after the quiet period. Leave empty to keep Night Watchman night-only. |
+| Presence Simulation Switch | Optional. Turned on after the first successful away secure round. Later rounds skip lights and only check doors. Turned off when someone comes home. |
 
 Do not add the garage overhead door. Night Watchman will refuse to lock a device whose name says overhead, and it never closes a cover.
 
@@ -90,4 +98,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.16` is tag `v1.0.16`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.17` is tag `v1.0.17`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.

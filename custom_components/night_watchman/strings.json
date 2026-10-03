@@ -42,6 +42,18 @@
               "lock_entity_4": "Lock Entity 4",
               "contact_entity_4": "Door Contact 4"
             }
+          },
+          "when_everyone_away": {
+            "name": "When Everyone Is Away",
+            "description": "After the quiet period, Night Watchman secures the house once, then can start Presence Simulation. Later rounds only check doors and locks so simulated lights are left alone.",
+            "data": {
+              "away_people": "People Who Must Be Away",
+              "presence_simulation_switch": "Presence Simulation Switch"
+            },
+            "data_description": {
+              "away_people": "When every person here is away, a secure round runs after the quiet period. Leave empty to disable away rounds.",
+              "presence_simulation_switch": "Optional. Turned on after the first successful away secure round. Turned off when someone comes home. Later rounds skip turning lights off."
+            }
           }
         },
         "data_description": {
@@ -111,6 +123,18 @@
               "contact_entity_3": "Door Contact 3",
               "lock_entity_4": "Lock Entity 4",
               "contact_entity_4": "Door Contact 4"
+            }
+          },
+          "when_everyone_away": {
+            "name": "When Everyone Is Away",
+            "description": "After the quiet period, Night Watchman secures the house once, then can start Presence Simulation. Later rounds only check doors and locks so simulated lights are left alone.",
+            "data": {
+              "away_people": "People Who Must Be Away",
+              "presence_simulation_switch": "Presence Simulation Switch"
+            },
+            "data_description": {
+              "away_people": "When every person here is away, a secure round runs after the quiet period. Leave empty to disable away rounds.",
+              "presence_simulation_switch": "Optional. Turned on after the first successful away secure round. Turned off when someone comes home. Later rounds skip turning lights off."
             }
           }
         }
