@@ -70,6 +70,8 @@ _SELF_ACTION_GRACE = timedelta(seconds=5)
 _STARTUP_GRACE = timedelta(seconds=30)
 _ALARM_CONFIRM_ATTEMPTS = 12
 _ALARM_CONFIRM_DELAY = 0.25
+_LOCK_CONFIRM_ATTEMPTS = 20
+_LOCK_CONFIRM_DELAY = 0.5
 _ACTIVE_ROUNDS: set[str] = set()
 
 type WatchmanConfigEntry = ConfigEntry
@@ -272,6 +274,19 @@ async def _call_entity(hass: HomeAssistant, domain: str, service: str, entity_id
         _LOGGER.exception("Night Watchman could not %s %s", service, entity_id)
         return False
     return True
+
+
+async def _lock_and_confirm(hass: HomeAssistant, entity_id: str) -> bool:
+    """Call lock.lock and wait until the entity reports locked."""
+    if not await _call_entity(hass, "lock", "lock", entity_id):
+        return False
+    for _ in range(_LOCK_CONFIRM_ATTEMPTS):
+        await asyncio.sleep(_LOCK_CONFIRM_DELAY)
+        state = hass.states.get(entity_id)
+        if state is not None and state.state.strip().casefold() == "locked":
+            return True
+    _LOGGER.error("Night Watchman lock %s did not report locked", entity_id)
+    return False
 
 
 def _entity_name(hass: HomeAssistant, entity_id: str) -> str:
@@ -565,6 +580,7 @@ async def _run_round(
         return RoundOutcome(summary=summary)
 
     locked: list[str] = []
+    lock_failed: list[str] = []
     left_open: list[str] = []
     seen_locks: set[str] = set()
     rules: list[tuple[str, str, str | None]] = []
@@ -587,23 +603,32 @@ async def _run_round(
         lock_state = hass.states.get(lock_entity) if lock_entity else None
         name = title or (lock_state.name if lock_state else contact_name)
         token = _state_token(hass, contact)
+        lock_token = lock_state.state.strip().casefold() if lock_state is not None else None
         if token in _OPEN:
             left_open.append(name)
             if lock_entity:
                 seen_locks.add(lock_entity)
             continue
-        if not lock_entity or not lock_entity.startswith("lock.") or token not in _CLOSED:
+        if not lock_entity or not lock_entity.startswith("lock."):
+            continue
+        if token not in _CLOSED:
+            # Unlocked door with a missing/unknown contact must not look like All clear.
+            if lock_token == "unlocked":
+                lock_failed.append(f"{name} (door contact unavailable)")
+                seen_locks.add(lock_entity)
             continue
         if lock_entity == contact or _is_overhead(hass, lock_entity):
             _LOGGER.warning("Night Watchman will not lock %s", lock_entity)
             seen_locks.add(lock_entity)
             continue
-        if lock_state is None or lock_state.state.strip().casefold() != "unlocked":
+        if lock_token != "unlocked":
             seen_locks.add(lock_entity)
             continue
-        if await _call_entity(hass, "lock", "lock", lock_entity):
+        if await _lock_and_confirm(hass, lock_entity):
             locked.append(name)
             _stamp_self_action(hass, runtime, lock_entity, now)
+        else:
+            lock_failed.append(name)
         seen_locks.add(lock_entity)
 
     turned_off: list[str] = []
@@ -620,6 +645,8 @@ async def _run_round(
     parts: list[str] = []
     if locked:
         parts.append("Locked " + ", ".join(locked) + ".")
+    if lock_failed:
+        parts.append("Lock failed: " + ", ".join(lock_failed) + ".")
     if turned_off:
         parts.append("Turned off " + ", ".join(turned_off) + ".")
     if left_open:

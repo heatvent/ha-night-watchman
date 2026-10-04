@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/heatvent/ha-night-watchman/issues",
   "loggers": ["custom_components.night_watchman"],
   "requirements": [],
-  "version": "1.0.19"
+  "version": "1.0.20"
 }

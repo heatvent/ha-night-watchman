@@ -25,7 +25,8 @@ A round only proceeds when the house has been quiet. A light that is simply left
 - Turns off monitored lights that are still on (when that checkbox is selected), plus any extra lights or switches you picked, such as a coffee maker.
 - Leaves **Lights to Keep On** alone (bedrooms, lamps).
 - Locks each selected door only when that lock is unlocked and its contact is closed.
-- Reports an open door in the notice and does not lock it. Nothing is closed.
+- Confirms the lock entity reports **locked** before counting success. A failed lock is named in the notice and never counts as All clear.
+- Reports an open door in the notice and does not lock it. Nothing is closed. An unlocked lock with an unavailable contact is reported as a lock failure.
 - Never locks the garage overhead door (refused by name).
 
 ### Night rounds (clock)
@@ -59,6 +60,7 @@ Every round sends a notice to the notify service(s) you configure:
 | Skipped | The house was still active. The recent devices are named. |
 | All clear | The round ran and nothing needed locking, turning off, or reporting. |
 | Actions | What changed: each lock, light or switch, and any door still open. |
+| Lock failed | A selected lock was unlocked and eligible, but did not report locked (or its contact was unavailable). |
 | Alarm armed / disarmed | Sent when the optional away alarm is armed after a secure round, or disarmed when someone comes home. |
 | Alarm not armed / arm failed | Sent when a door is still open, or the panel did not reach the expected armed state. |
 | Presence simulation started / stopped | Sent when that switch is turned on after a secure away round, or turned off when someone comes home. |
@@ -87,7 +89,7 @@ These times are remembered across a Home Assistant restart. Lights and locks Nig
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.19`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.20`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon for custom integrations. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -135,4 +137,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.19` is tag `v1.0.19`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.20` is tag `v1.0.20`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
