@@ -65,7 +65,7 @@ Every round sends a notice to the notify service(s) you configure:
 | Alarm not armed / arm failed | Sent when a door is still open, or the panel did not reach the expected armed state. |
 | Presence simulation started / stopped | Sent when that switch is turned on after a secure away round, or turned off when someone comes home. |
 
-Use one notify service name, or several separated by commas, for example `phones_group` or `phones_group, tablet`. Leave off the `notify.` prefix.
+Use one notify service or entity name, or several separated by commas, for example `phones_group` or `phones_group, email_group`. Leave off the `notify.` prefix. Legacy services (phones, Echos, TVs) and notify entities (SMTP Email group) are both supported.
 
 ### Pause and status
 
@@ -89,7 +89,7 @@ These times are remembered across a Home Assistant restart. Lights and locks Nig
 3. Download **Night Watchman**, then **restart** Home Assistant
 4. **Settings → Devices & services → Add integration → Night Watchman**
 
-HACS follows **GitHub Releases** (`v1.0.20`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.21`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon for custom integrations. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -106,7 +106,7 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | First round / Last round | Night window when clock rounds are allowed. Default 1:00 AM through 5:00 AM. |
 | Minutes between rounds | How often a night round is attempted inside that window. Default 60. |
 | Quiet period | How long monitored devices must stay unchanged before a round proceeds. Default 45 minutes. Also used after the last person leaves for the away path. |
-| Notify service | Where notices go. One name or a comma-separated list. Leave off `notify.`. |
+| Notify service | Where notices go. One name or a comma-separated list of notify services or entities. Leave off `notify.`. Example: `phones_group, email_group`. |
 | Monitored Lights | A recent on or off skips the round. Also turned off when **Turn Off All Monitored Lights** is selected. |
 | Monitored Motion Sensors | A recent motion change skips the round. Indoor cameras belong here if you want them counted. |
 | Monitored Doors | A recent open or close skips the round. This list does not lock or close anything. |
@@ -137,4 +137,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.20` is tag `v1.0.20`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.21` is tag `v1.0.21`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.

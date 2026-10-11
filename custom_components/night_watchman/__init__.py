@@ -444,25 +444,44 @@ async def _set_alarm(hass: HomeAssistant, options: dict[str, Any], arm: bool) ->
     return False
 
 
+def _notify_entity_id(hass: HomeAssistant, name: str) -> str | None:
+    """Resolve a notify entity id such as email_group -> notify.email_group."""
+    for candidate in (name if name.startswith("notify.") else f"notify.{name}", name):
+        state = hass.states.get(candidate)
+        if state is not None and state.domain == "notify":
+            return state.entity_id
+    return None
+
+
 async def _notify(hass: HomeAssistant, options: dict[str, Any], message: str) -> None:
-    """Send a notice after every round to each configured notify service."""
-    services = _notify_service_names(options.get(CONF_NOTIFY_SERVICE))
-    if not services:
+    """Send a notice after every round to each configured notify service or entity."""
+    targets = _notify_service_names(options.get(CONF_NOTIFY_SERVICE))
+    if not targets:
         _LOGGER.error("Night Watchman notify service is not a plain service name")
         return
-    for service in services:
-        if not hass.services.has_service("notify", service):
-            _LOGGER.error("Night Watchman notify service notify.%s is not available", service)
-            continue
+    payload = {"title": "Night watchman", "message": message}
+    for name in targets:
         try:
-            await hass.services.async_call(
-                "notify",
-                service,
-                {"title": "Night watchman", "message": message},
-                blocking=False,
+            if hass.services.has_service("notify", name):
+                await hass.services.async_call("notify", name, payload, blocking=False)
+                continue
+            entity_id = _notify_entity_id(hass, name)
+            if entity_id is not None and hass.services.has_service("notify", "send_message"):
+                # Match script.send_notifications: entity notifiers get message only.
+                await hass.services.async_call(
+                    "notify",
+                    "send_message",
+                    {"message": f"Night watchman: {message}"},
+                    target={"entity_id": entity_id},
+                    blocking=False,
+                )
+                continue
+            _LOGGER.error(
+                "Night Watchman notify target %s is not an available notify service or entity",
+                name,
             )
         except Exception:
-            _LOGGER.exception("Night Watchman could not notify %s", service)
+            _LOGGER.exception("Night Watchman could not notify %s", name)
 
 
 class NightWatchmanRuntime:

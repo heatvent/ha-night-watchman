@@ -1,7 +1,7 @@
 {
   "config": {
     "error": {
-      "invalid_notify_service": "Use notify service names only, such as phones_group or phones_group, tablet."
+      "invalid_notify_service": "Use notify service or entity names only, such as phones_group or phones_group, email_group."
     },
     "step": {
       "user": {
@@ -71,14 +71,14 @@
           "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
           "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
           "contact_entity_1": "Do not use the garage overhead door.",
-          "notify_service": "Notify service names from Developer Tools. One name, or several separated by commas, for example phones_group or phones_group, tablet. Leave off the notify. prefix. A notice is sent after every round."
+          "notify_service": "Notify service or entity names from Developer Tools. One name, or several separated by commas, for example phones_group or phones_group, email_group. Leave off the notify. prefix. Services such as phones_group and notify entities such as email_group are both supported. A notice is sent after every round."
         }
       }
     }
   },
   "options": {
     "error": {
-      "invalid_notify_service": "Use notify service names only, such as phones_group or phones_group, tablet."
+      "invalid_notify_service": "Use notify service or entity names only, such as phones_group or phones_group, email_group."
     },
     "step": {
       "init": {
@@ -93,7 +93,7 @@
           "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
           "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
           "contact_entity_1": "Do not use the garage overhead door.",
-          "notify_service": "Notify service names from Developer Tools. One name, or several separated by commas, for example phones_group or phones_group, tablet. Leave off the notify. prefix. A notice is sent after every round."
+          "notify_service": "Notify service or entity names from Developer Tools. One name, or several separated by commas, for example phones_group or phones_group, email_group. Leave off the notify. prefix. Services such as phones_group and notify entities such as email_group are both supported. A notice is sent after every round."
         },
         "data": {
           "start": "First round",
