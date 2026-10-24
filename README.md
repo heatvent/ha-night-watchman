@@ -84,14 +84,17 @@ These times are remembered across a Home Assistant restart. Lights and locks Nig
 
 ### HACS
 
-1. **HACS → Integrations → ⋮ → Custom repositories**
-2. URL: `https://github.com/heatvent/ha-night-watchman` · Category: **Integration**
-3. Download **Night Watchman**, then **restart** Home Assistant
-4. **Settings → Devices & services → Add integration → Night Watchman**
+Night Watchman is in the default HACS list.
+
+1. **HACS → Integrations** and search for **Night Watchman**
+2. Download it, then **restart** Home Assistant
+3. **Settings → Devices & services → Add integration → Night Watchman**
+
+To install before it shows in that list, add a custom repository: **HACS → Integrations → ⋮ → Custom repositories**, URL `https://github.com/heatvent/ha-night-watchman`, category **Integration**.
 
 HACS follows **GitHub Releases** (`v1.0.21`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
-The HACS store list may show a placeholder icon for custom integrations. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
+The HACS store list may show a placeholder icon. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
 ### Manual
 
