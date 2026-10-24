@@ -6,7 +6,7 @@
     "step": {
       "user": {
         "title": "Night Watchman",
-        "description": "Rounds run from the first time through the last time. A round is skipped when any activity device changed during the quiet period. On/off is not activity. Only a recent change is.",
+        "description": "Rounds run from the first time through the last time. Motion or a door change during the quiet period skips the round. A recent light change still allows locks and leaves those lights on.",
         "data": {
           "start": "First round",
           "end": "Last round",
@@ -56,17 +56,17 @@
             "data_description": {
               "away_enabled": "When on, Night Watchman waits for the quiet period after the last person leaves, runs one secure round, then can arm an alarm and start Presence Simulation.",
               "away_people": "Every person here must be away before the secure round runs.",
-              "away_alarm": "Optional. Armed after that secure round. Disarmed when someone comes home.",
+              "away_alarm": "Optional. Armed after a successful secure round. Disarmed when someone comes home only if Night Watchman armed it.",
               "away_alarm_mode": "How to arm the panel after the secure round. Away is usual when everyone has left.",
               "presence_simulation_switch": "Optional. Turned on after that secure round. Turned off when someone comes home. Night rounds are skipped while everyone is away."
             }
           }
         },
         "data_description": {
-          "activity_lights": "A recent on or off change skips the round. A new light is ignored until you add it here.",
+          "activity_lights": "A recent on or off leaves the lights for later. Motion and doors still skip the round. A new light is ignored until you add it here.",
           "activity_motion": "A recent motion change skips the round, including indoor cameras if you add them.",
           "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
-          "include_activity_lights": "Turns off every monitored light when a round runs.",
+          "include_activity_lights": "Turns off every monitored light when a round runs, unless a light changed during the quiet period.",
           "keep_on_lights": "Stays on even when the checkbox above is selected. Use this for bedrooms and lamps.",
           "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
           "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
@@ -83,12 +83,12 @@
     "step": {
       "init": {
         "title": "Night Watchman",
-        "description": "Rounds run from the first time through the last time. A round is skipped when any activity device changed during the quiet period. On/off is not activity. Only a recent change is.",
+        "description": "Rounds run from the first time through the last time. Motion or a door change during the quiet period skips the round. A recent light change still allows locks and leaves those lights on.",
         "data_description": {
-          "activity_lights": "A recent on or off change skips the round. A new light is ignored until you add it here.",
+          "activity_lights": "A recent on or off leaves the lights for later. Motion and doors still skip the round. A new light is ignored until you add it here.",
           "activity_motion": "A recent motion change skips the round, including indoor cameras if you add them.",
           "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
-          "include_activity_lights": "Turns off every monitored light when a round runs.",
+          "include_activity_lights": "Turns off every monitored light when a round runs, unless a light changed during the quiet period.",
           "keep_on_lights": "Stays on even when the checkbox above is selected. Use this for bedrooms and lamps.",
           "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
           "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
@@ -144,7 +144,7 @@
             "data_description": {
               "away_enabled": "When on, Night Watchman waits for the quiet period after the last person leaves, runs one secure round, then can arm an alarm and start Presence Simulation.",
               "away_people": "Every person here must be away before the secure round runs.",
-              "away_alarm": "Optional. Armed after that secure round. Disarmed when someone comes home.",
+              "away_alarm": "Optional. Armed after a successful secure round. Disarmed when someone comes home only if Night Watchman armed it.",
               "away_alarm_mode": "How to arm the panel after the secure round. Away is usual when everyone has left.",
               "presence_simulation_switch": "Optional. Turned on after that secure round. Turned off when someone comes home. Night rounds are skipped while everyone is away."
             }

@@ -43,6 +43,8 @@ class NightWatchmanSwitch(SwitchEntity, RestoreEntity):
         if last is not None:
             self._runtime.enabled = last.state == "on"
         self._attr_is_on = self._runtime.enabled
+        if self._runtime.on_enabled_change is not None:
+            await self._runtime.on_enabled_change(self._runtime.enabled)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Let the scheduled rounds run."""

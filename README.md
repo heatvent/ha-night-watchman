@@ -18,20 +18,22 @@ You choose every device. A new light, sensor, or switch is ignored until you add
 
 ### Quiet house
 
-A round only proceeds when the house has been quiet. A light that is simply left on does not count. Only a recent change does: a light switched, motion, or a door opened or closed. If something changed during the quiet period, the round is skipped and tried again later.
+A round proceeds when motion sensors and doors have been quiet. A light that is simply left on does not count. A recent light change does not skip locks: those lights stay on and the notice names them. Recent motion or a door open or close skips the whole round, and the next scheduled round tries again.
 
 ### What a secure round does
 
-- Turns off monitored lights that are still on (when that checkbox is selected), plus any extra lights or switches you picked, such as a coffee maker.
-- Leaves **Lights to Keep On** alone (bedrooms, lamps).
-- Locks each selected door only when that lock is unlocked and its contact is closed.
-- Confirms the lock entity reports **locked** before counting success. A failed lock is named in the notice and never counts as All clear.
-- Reports an open door in the notice and does not lock it. Nothing is closed. An unlocked lock with an unavailable contact is reported as a lock failure.
+- Turns off monitored lights that are still on (when that checkbox is selected), plus any extra lights or switches you picked, such as a coffee maker. The entity must leave `on` before that counts. A light that stays on is **Turn off failed**.
+- Leaves **Lights to Keep On** alone (bedrooms, lamps). Recent light activity also leaves lights on for that round.
+- Locks each selected door when its contact is closed and the lock is not already locked. Jammed, unlocking, unknown, and unavailable locks are tried. A lock already moving to locked is waited on.
+- Calls lock once, waits, then tries one more time. Success is the lock entity reporting **locked**. Anything else is **Lock failed** and includes the state when it was not simply unlocked.
+- Reports an open door in the notice and does not lock it. Nothing is closed. A lock whose contact is unavailable is a lock failure unless that lock already reports locked.
 - Never locks the garage overhead door (refused by name).
 
 ### Night rounds (clock)
 
 By default, rounds run inside a night window. The defaults are 1:00 AM through 5:00 AM, every 60 minutes, so attempts land at 1, 2, 3, 4, and 5.
+
+A night round notifies you immediately only when something needs attention: a lock failed, a door is still open, a turn-off failed, or the round itself failed. Skipped and all-clear rounds wait. After the last slot (5:00 AM with the defaults) you get one **Night summary** of every round that ran. That log is kept across a restart inside the same night window. If everyone was away and no night round ran, the summary says so.
 
 ### Away when everyone leaves (optional)
 
@@ -39,31 +41,33 @@ Off by default, so other home and away automations are left alone.
 
 When **Secure When Everyone Is Away** is on:
 
-1. You pick the people who must all be away.
-2. When the last of those people leaves, Night Watchman waits for the quiet period.
-3. It runs **one** secure round with the same lights and doors as a night round.
-4. If that round was skipped because the house was still active, it waits another quiet period and tries again.
-5. After a successful round, if you set an alarm panel and no lock-paired door was left open, that panel is armed (default mode: Away). Arming is confirmed before the notice is sent. Open doors skip arming and send a notice instead.
-6. After a successful round, if you set a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch, that switch is turned **on**.
-7. When someone comes home, that alarm is disarmed (when Night Watchman armed it, or after a restart when Away-mode arm is still active) and Presence Simulation is turned **off**.
+1. You pick the people who must all be away. Home and unknown block the away path. Any other person state counts as away, including a named zone such as Work.
+2. When the last of those people leaves, Night Watchman waits out the quiet period. If Home Assistant restarts and the house is already quiet, it waits only the time still remaining (at least one minute), not a fresh full period.
+3. It runs **one** secure round. Motion or a door change skips it. A recent light change also skips this away round, unlike a night round.
+4. A skip waits for the remaining quiet time and tries again. A lock failure or a door left open does not count as secured, does not arm the alarm, and does not start Presence Simulation. It retries in 15 minutes and does not repeat the same notice.
+5. After a round with no open door and no failed lock, if you set an alarm panel, that panel is armed (default mode: Away). Arming is confirmed before the notice is sent.
+6. After that same successful round, if you set a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch, that switch is turned **on**.
+7. When someone comes home, the alarm is disarmed only if Night Watchman armed it. That fact is remembered across a restart, so a manual Away arm is left alone. Presence Simulation is turned **off**.
 
-There is no daytime clock for this path. People leaving is the trigger. While the house is already secured by this away path — Night Watchman finished the round, the quiet wait is in progress, Presence Simulation is on, or the selected alarm is armed in the chosen mode — night rounds are skipped so those systems can keep control.
+There is no daytime clock for this path. People leaving is the trigger. While the house is already secured by this away path — Night Watchman finished a successful round, the quiet wait is in progress, Presence Simulation is on, or the selected alarm is armed in the chosen mode — night rounds are skipped so those systems can keep control.
 
-Night Watchman does not send an alarm code. If your panel requires a code for service calls, allow code-less arm and disarm in that alarm integration. Prefer **Arm Mode: Away** so a normal night/home arm is not mistaken for the away path.
+Night Watchman does not send an alarm code. If your panel requires a code for service calls, allow code-less arm and disarm in that alarm integration. Prefer **Arm Mode: Away** so a normal night or home arm is not treated as the away path. An alarm you armed yourself is not disarmed when someone comes home.
 
 ### Notices
 
-Every round sends a notice to the notify service(s) you configure:
+Away rounds and the **Run round** button send a notice every time. Night rounds send one immediately only for a problem. The rest of the night is one summary after the last slot.
 
 | Notice | Meaning |
 |---|---|
-| Skipped | The house was still active. The recent devices are named. |
-| All clear | The round ran and nothing needed locking, turning off, or reporting. |
-| Actions | What changed: each lock, light or switch, and any door still open. |
-| Lock failed | A selected lock was unlocked and eligible, but did not report locked (or its contact was unavailable). |
-| Alarm armed / disarmed | Sent when the optional away alarm is armed after a secure round, or disarmed when someone comes home. |
-| Alarm not armed / arm failed | Sent when a door is still open, or the panel did not reach the expected armed state. |
-| Presence simulation started / stopped | Sent when that switch is turned on after a secure away round, or turned off when someone comes home. |
+| Night summary | After the last night slot. One line per round, such as `1:00 AM: All clear.` |
+| Skipped | The house was still active. The recent devices are named. On the night path this waits for the summary. |
+| All clear | The round ran and nothing needed locking, turning off, or reporting. On the night path this waits for the summary. |
+| Actions | What changed: each lock, light or switch, and any door still open. Includes lights left on because of recent light activity. |
+| Lock failed | The lock did not report locked, including jammed or unknown, or its contact was unavailable. Night rounds send this immediately. |
+| Turn off failed | A light or switch was on and stayed on. Night rounds send this immediately. |
+| Alarm armed / disarmed | Sent when the optional away alarm is armed after a successful secure round, or disarmed when someone comes home and Night Watchman had armed it. |
+| Alarm arm failed | The panel did not reach the expected armed state. An open door or a failed lock prevents the arm attempt. |
+| Presence simulation started / stopped | Sent when that switch is turned on after a successful away round, or turned off when someone comes home. |
 
 Use one notify service or entity name, or several separated by commas, for example `phones_group` or `phones_group, email_group`. Leave off the `notify.` prefix. Legacy services (phones, Echos, TVs) and notify entities (SMTP Email group) are both supported.
 
@@ -72,11 +76,12 @@ Use one notify service or entity name, or several separated by commas, for examp
 | Entity | What it shows |
 |---|---|
 | Enabled | On allows rounds. Off cancels a pending away quiet wait and skips night and away securing without removing the integration. Turning it back on while everyone is still away starts a new quiet wait. |
-| Last round | When the last round was checked (night or away). The result text is in the attributes. |
+| Run round | Runs locks and lights now. It does not wait for the quiet period, and it always sends a notice. It does nothing useful while Enabled is off, other than saying Night Watchman is paused. |
+| Last round | When the last round was checked (night, away, or manual). The result text is in the attributes. |
 | Last activity | When a monitored light, motion sensor, or door last changed. |
 | Last active device | Which of those devices changed. |
 
-These times are remembered across a Home Assistant restart. Lights and locks Night Watchman itself changes during a round do not count as activity for the quiet check. Entity changes that only reflect a Home Assistant restart are ignored for a short startup window so rounds are not skipped as “still active” right after boot.
+These times are remembered across a Home Assistant restart. Lights and locks Night Watchman itself changes during a round do not count as activity for the quiet check. A state refresh after startup that Night Watchman did not see does not count either. A change from before startup still does.
 
 ---
 
@@ -92,7 +97,7 @@ Night Watchman is in the default HACS list.
 
 To install before it shows in that list, add a custom repository: **HACS → Integrations → ⋮ → Custom repositories**, URL `https://github.com/heatvent/ha-night-watchman`, category **Integration**.
 
-HACS follows **GitHub Releases** (`v1.0.21`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.22`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -110,7 +115,7 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Minutes between rounds | How often a night round is attempted inside that window. Default 60. |
 | Quiet period | How long monitored devices must stay unchanged before a round proceeds. Default 45 minutes. Also used after the last person leaves for the away path. |
 | Notify service | Where notices go. One name or a comma-separated list of notify services or entities. Leave off `notify.`. Example: `phones_group, email_group`. |
-| Monitored Lights | A recent on or off skips the round. Also turned off when **Turn Off All Monitored Lights** is selected. |
+| Monitored Lights | A recent on or off leaves lights on for that night round and is named in the result. Motion and doors still skip the round. Also turned off when **Turn Off All Monitored Lights** is selected and the house is quiet. |
 | Monitored Motion Sensors | A recent motion change skips the round. Indoor cameras belong here if you want them counted. |
 | Monitored Doors | A recent open or close skips the round. This list does not lock or close anything. |
 | Turn Off All Monitored Lights | Turns off the monitored lights when a secure round runs. |
@@ -118,8 +123,8 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Other Lights/Devices to Turn Off | Extra lights or switches (coffee maker, 3D printer). Do not add strips that should stay on. |
 | Doors to Lock | Up to four lock and contact pairs. Lock only if unlocked and the contact is closed. |
 | Secure When Everyone Is Away | Off by default. When on, people leaving triggers one secure round after the quiet period. |
-| People Who Must Be Away | Used only when the box above is on. Every person here must be away. |
-| Alarm Panel | Optional. Armed after a successful away secure round when no paired door was left open. Disarmed when someone comes home. No code is sent. |
+| People Who Must Be Away | Used only when the box above is on. Home or unknown blocks the away path. A named zone counts as away. |
+| Alarm Panel | Optional. Armed after a successful away secure round. Disarmed when someone comes home only if Night Watchman armed it, including after a restart. No code is sent. |
 | Arm Mode | Away, Home, Night, or Vacation. Default Away. Prefer Away. Only that armed state counts as “already secured” for skipping night rounds. |
 | Presence Simulation Switch | Optional. Turned on after a successful away secure round. Turned off when someone comes home. |
 
@@ -140,4 +145,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.21` is tag `v1.0.21`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.22` is tag `v1.0.22`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
