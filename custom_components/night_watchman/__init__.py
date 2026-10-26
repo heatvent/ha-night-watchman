@@ -1031,7 +1031,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
                 continue
             lines.append(f"{_clock_label(parsed)}: {item['summary']}")
         if lines:
-            message = "Night summary. " + " ".join(lines)
+            message = "Night summary\n" + "\n".join(lines)
         elif away:
             message = "Night summary: no rounds ran. Everyone was away."
         else:

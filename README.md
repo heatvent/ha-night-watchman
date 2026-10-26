@@ -59,7 +59,7 @@ Away rounds and the **Run round** button send a notice every time. Night rounds 
 
 | Notice | Meaning |
 |---|---|
-| Night summary | After the last night slot. One line per round, such as `1:00 AM: All clear.` |
+| Night summary | After the last night slot. Each round starts on its own line, such as `1:00 AM: All clear.` |
 | Skipped | The house was still active. The recent devices are named. On the night path this waits for the summary. |
 | All clear | The round ran and nothing needed locking, turning off, or reporting. On the night path this waits for the summary. |
 | Actions | What changed: each lock, light or switch, and any door still open. Includes lights left on because of recent light activity. |
@@ -97,7 +97,7 @@ Night Watchman is in the default HACS list.
 
 To install before it shows in that list, add a custom repository: **HACS → Integrations → ⋮ → Custom repositories**, URL `https://github.com/heatvent/ha-night-watchman`, category **Integration**.
 
-HACS follows **GitHub Releases** (`v1.0.22`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.23`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -145,4 +145,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.22` is tag `v1.0.22`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.23` is tag `v1.0.23`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
