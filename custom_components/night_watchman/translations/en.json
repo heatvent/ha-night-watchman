@@ -49,6 +49,7 @@
             "data": {
               "away_enabled": "Secure When Everyone Is Away",
               "away_people": "People Who Must Be Away",
+              "away_keep_on_lights": "Lights to Keep On When Away",
               "away_alarm": "Alarm Panel",
               "away_alarm_mode": "Arm Mode",
               "presence_simulation_switch": "Presence Simulation Switch"
@@ -56,6 +57,7 @@
             "data_description": {
               "away_enabled": "When on, Night Watchman waits for the quiet period after the last person leaves, runs one secure round, then can arm an alarm and start Presence Simulation.",
               "away_people": "Every person here must be away before the secure round runs.",
+              "away_keep_on_lights": "Still turned off during night rounds. Left alone on the away secure round so outdoor schedules can keep the yard lit until they turn off.",
               "away_alarm": "Optional. Armed after a successful secure round. Disarmed when someone comes home only if Night Watchman armed it.",
               "away_alarm_mode": "How to arm the panel after the secure round. Away is usual when everyone has left.",
               "presence_simulation_switch": "Optional. Turned on after that secure round. Turned off when someone comes home. Night rounds are skipped while everyone is away."
@@ -137,6 +139,7 @@
             "data": {
               "away_enabled": "Secure When Everyone Is Away",
               "away_people": "People Who Must Be Away",
+              "away_keep_on_lights": "Lights to Keep On When Away",
               "away_alarm": "Alarm Panel",
               "away_alarm_mode": "Arm Mode",
               "presence_simulation_switch": "Presence Simulation Switch"
@@ -144,6 +147,7 @@
             "data_description": {
               "away_enabled": "When on, Night Watchman waits for the quiet period after the last person leaves, runs one secure round, then can arm an alarm and start Presence Simulation.",
               "away_people": "Every person here must be away before the secure round runs.",
+              "away_keep_on_lights": "Still turned off during night rounds. Left alone on the away secure round so outdoor schedules can keep the yard lit until they turn off.",
               "away_alarm": "Optional. Armed after a successful secure round. Disarmed when someone comes home only if Night Watchman armed it.",
               "away_alarm_mode": "How to arm the panel after the secure round. Away is usual when everyone has left.",
               "presence_simulation_switch": "Optional. Turned on after that secure round. Turned off when someone comes home. Night rounds are skipped while everyone is away."

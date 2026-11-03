@@ -30,6 +30,7 @@ from .const import (
     CONF_AWAY_ALARM,
     CONF_AWAY_ALARM_MODE,
     CONF_AWAY_ENABLED,
+    CONF_AWAY_KEEP_ON_LIGHTS,
     CONF_AWAY_PEOPLE,
     CONF_CONTACT_ENTITY,
     CONF_DOORS_TO_LOCK,
@@ -199,12 +200,22 @@ def _activity_entities(options: dict[str, Any], *, include_lights: bool = True) 
     return [entity_id for entity_id in entities if not entity_id.startswith("light.")]
 
 
-def _turn_off_entities(options: dict[str, Any]) -> list[str]:
+def _away_keep_on_lights(options: dict[str, Any]) -> list[str]:
+    """Lights left alone on the away secure round, but still turned off at night."""
+    section = options.get("when_everyone_away")
+    if isinstance(section, dict) and CONF_AWAY_KEEP_ON_LIGHTS in section:
+        return _unique(_as_list(section.get(CONF_AWAY_KEEP_ON_LIGHTS)))
+    return _unique(_as_list(options.get(CONF_AWAY_KEEP_ON_LIGHTS)))
+
+
+def _turn_off_entities(options: dict[str, Any], *, for_away: bool = False) -> list[str]:
     entities: list[str] = []
     if options.get(CONF_INCLUDE_ACTIVITY_LIGHTS, True):
         entities.extend(_monitored_lights(options))
     entities.extend(_as_list(options.get(CONF_TURN_OFF_ENTITIES)))
     keep = set(_as_list(options.get(CONF_KEEP_ON_LIGHTS)))
+    if for_away:
+        keep.update(_away_keep_on_lights(options))
     return [
         entity_id
         for entity_id in _unique(entities)
@@ -663,8 +674,11 @@ def _remaining_quiet_seconds(hass: HomeAssistant, options: dict[str, Any], runti
     """Seconds still needed before the house counts as quiet. Zero when it already is."""
     quiet_seconds = _positive_int(options.get(CONF_QUIET_MINUTES), 45) * 60
     now = dt_util.as_local(dt_util.utcnow())
+    ignore = set(_away_keep_on_lights(options))
     latest: datetime | None = None
     for entity_id in _activity_entities(options):
+        if entity_id in ignore:
+            continue
         stamp = _activity_stamp(hass, entity_id, runtime)
         if stamp is not None and (latest is None or stamp > latest):
             latest = stamp
@@ -682,15 +696,20 @@ async def _run_round(
     *,
     enforce_quiet: bool = True,
     lock_when_only_lights_active: bool = False,
+    for_away: bool = False,
 ) -> RoundOutcome:
     """Run one round and return skipped, all clear, or what changed. The caller notifies."""
     options = _settings(entry)
     quiet = timedelta(minutes=_positive_int(options.get(CONF_QUIET_MINUTES), 45))
+    away_keep = set(_away_keep_on_lights(options)) if for_away else set()
     if enforce_quiet:
         occupied = _recent_activity_names(
             hass, _activity_entities(options, include_lights=False), quiet, now, runtime
         )
-        light_activity = _recent_activity_names(hass, _monitored_lights(options), quiet, now, runtime)
+        monitored = [
+            entity_id for entity_id in _monitored_lights(options) if entity_id not in away_keep
+        ]
+        light_activity = _recent_activity_names(hass, monitored, quiet, now, runtime)
         if occupied or (light_activity and not lock_when_only_lights_active):
             recent = occupied or light_activity
             summary = "Skipped: the house is still active. Recent activity: " + ", ".join(recent) + "."
@@ -760,8 +779,9 @@ async def _run_round(
 
     turned_off: list[str] = []
     turn_off_failed: list[str] = []
+    left_on_away: list[str] = []
     if not defer_lights:
-        for entity_id in _turn_off_entities(options):
+        for entity_id in _turn_off_entities(options, for_away=for_away):
             state = hass.states.get(entity_id)
             if state is None or state.state != STATE_ON:
                 continue
@@ -770,6 +790,11 @@ async def _run_round(
                 _stamp_self_action(hass, runtime, entity_id, now)
             else:
                 turn_off_failed.append(state.name or entity_id)
+        if for_away:
+            for entity_id in away_keep:
+                state = hass.states.get(entity_id)
+                if state is not None and state.state == STATE_ON:
+                    left_on_away.append(state.name or entity_id)
 
     parts: list[str] = []
     if locked:
@@ -784,6 +809,8 @@ async def _run_round(
         parts.append("Still open: " + ", ".join(left_open) + ".")
     if defer_lights:
         parts.append("Lights left on: recent activity: " + ", ".join(light_activity) + ".")
+    if left_on_away:
+        parts.append("Left on for away: " + ", ".join(left_on_away) + ".")
     if not parts:
         summary = "All clear."
     else:
@@ -800,6 +827,7 @@ async def _execute_round(
     enforce_quiet: bool,
     lock_when_only_lights_active: bool,
     notify_mode: str,
+    for_away: bool = False,
 ) -> RoundOutcome:
     """notify_mode is always, failures, or none."""
     if entry.entry_id in _ACTIVE_ROUNDS:
@@ -815,6 +843,7 @@ async def _execute_round(
             now,
             enforce_quiet=enforce_quiet,
             lock_when_only_lights_active=lock_when_only_lights_active,
+            for_away=for_away,
         )
     except Exception:
         _LOGGER.exception("Night Watchman round failed")
@@ -883,6 +912,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> 
             enforce_quiet=True,
             lock_when_only_lights_active=False,
             notify_mode="none",
+            for_away=True,
         )
         if not outcome.secure:
             if outcome.summary != runtime.last_away_problem:

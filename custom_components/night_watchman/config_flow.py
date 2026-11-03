@@ -25,6 +25,7 @@ from .const import (
     CONF_AWAY_ALARM,
     CONF_AWAY_ALARM_MODE,
     CONF_AWAY_ENABLED,
+    CONF_AWAY_KEEP_ON_LIGHTS,
     CONF_AWAY_PEOPLE,
     CONF_DOORS_TO_LOCK,
     CONF_END,
@@ -142,6 +143,9 @@ def _away_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
     nested = defaults.get("when_everyone_away") if isinstance(defaults.get("when_everyone_away"), dict) else {}
     enabled_default = nested.get(CONF_AWAY_ENABLED, defaults.get(CONF_AWAY_ENABLED, False))
     people_default = nested.get(CONF_AWAY_PEOPLE, defaults.get(CONF_AWAY_PEOPLE, []))
+    keep_away_default = nested.get(
+        CONF_AWAY_KEEP_ON_LIGHTS, defaults.get(CONF_AWAY_KEEP_ON_LIGHTS, [])
+    )
     presence_default = nested.get(CONF_PRESENCE_SIMULATION, defaults.get(CONF_PRESENCE_SIMULATION))
     alarm_default = nested.get(CONF_AWAY_ALARM, defaults.get(CONF_AWAY_ALARM))
     mode_default = nested.get(CONF_AWAY_ALARM_MODE, defaults.get(CONF_AWAY_ALARM_MODE, DEFAULT_AWAY_ALARM_MODE))
@@ -161,6 +165,11 @@ def _away_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
         vol.Required(CONF_AWAY_ENABLED, default=bool(enabled_default)): selector.BooleanSelector(),
         vol.Optional(CONF_AWAY_PEOPLE, default=people_default or []): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="person", multiple=True)
+        ),
+        vol.Optional(
+            CONF_AWAY_KEEP_ON_LIGHTS, default=keep_away_default or []
+        ): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["light", "switch"], multiple=True)
         ),
         alarm_field: selector.EntitySelector(
             selector.EntitySelectorConfig(domain="alarm_control_panel")
@@ -212,6 +221,9 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     people = away.get(CONF_AWAY_PEOPLE, data.get(CONF_AWAY_PEOPLE, []))
     if not isinstance(people, list):
         people = []
+    keep_away = away.get(CONF_AWAY_KEEP_ON_LIGHTS, data.get(CONF_AWAY_KEEP_ON_LIGHTS, []))
+    if not isinstance(keep_away, list):
+        keep_away = []
     presence = away.get(CONF_PRESENCE_SIMULATION) or data.get(CONF_PRESENCE_SIMULATION)
     presence = presence if isinstance(presence, str) and presence.startswith("switch.") else None
     alarm = away.get(CONF_AWAY_ALARM) or data.get(CONF_AWAY_ALARM)
@@ -220,12 +232,18 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     mode = mode if mode in AWAY_ALARM_MODES else DEFAULT_AWAY_ALARM_MODE
     data[CONF_AWAY_ENABLED] = enabled
     data[CONF_AWAY_PEOPLE] = [item for item in people if isinstance(item, str) and item]
+    data[CONF_AWAY_KEEP_ON_LIGHTS] = [
+        item
+        for item in keep_away
+        if isinstance(item, str) and item.split(".", 1)[0] in {"light", "switch"}
+    ]
     data[CONF_PRESENCE_SIMULATION] = presence
     data[CONF_AWAY_ALARM] = alarm
     data[CONF_AWAY_ALARM_MODE] = mode
     data["when_everyone_away"] = {
         CONF_AWAY_ENABLED: enabled,
         CONF_AWAY_PEOPLE: data[CONF_AWAY_PEOPLE],
+        CONF_AWAY_KEEP_ON_LIGHTS: data[CONF_AWAY_KEEP_ON_LIGHTS],
         CONF_AWAY_ALARM: alarm,
         CONF_AWAY_ALARM_MODE: mode,
         CONF_PRESENCE_SIMULATION: presence,
