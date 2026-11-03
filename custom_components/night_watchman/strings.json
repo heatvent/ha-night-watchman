@@ -49,7 +49,7 @@
             "data": {
               "away_enabled": "Secure When Everyone Is Away",
               "away_people": "People Who Must Be Away",
-              "away_keep_on_lights": "Lights to Keep On When Away",
+              "away_keep_on_lights": "Turn Off Only at Night",
               "away_alarm": "Alarm Panel",
               "away_alarm_mode": "Arm Mode",
               "presence_simulation_switch": "Presence Simulation Switch"
@@ -57,7 +57,7 @@
             "data_description": {
               "away_enabled": "When on, Night Watchman waits for the quiet period after the last person leaves, runs one secure round, then can arm an alarm and start Presence Simulation.",
               "away_people": "Every person here must be away before the secure round runs.",
-              "away_keep_on_lights": "Still turned off during night rounds. Left alone on the away secure round so outdoor schedules can keep the yard lit until they turn off.",
+              "away_keep_on_lights": "Also list these under Other Lights/Devices to Turn Off (or Monitored Lights). Away securing leaves them on. Night rounds still turn them off. Use for outdoor groups such as Front Yard and Backyard.",
               "away_alarm": "Optional. Armed after a successful secure round. Disarmed when someone comes home only if Night Watchman armed it.",
               "away_alarm_mode": "How to arm the panel after the secure round. Away is usual when everyone has left.",
               "presence_simulation_switch": "Optional. Turned on after that secure round. Turned off when someone comes home. Night rounds are skipped while everyone is away."
@@ -69,8 +69,8 @@
           "activity_motion": "A recent motion change skips the round, including indoor cameras if you add them.",
           "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
           "include_activity_lights": "Turns off every monitored light when a round runs, unless a light changed during the quiet period.",
-          "keep_on_lights": "Stays on even when the checkbox above is selected. Use this for bedrooms and lamps.",
-          "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
+          "keep_on_lights": "Stays on for every round, including night. Use this for bedrooms and lamps. Different from Turn Off Only at Night under When Everyone Is Away.",
+          "turn_off_entities": "Extra lights or switches turned off on a secure round, such as a coffee maker or outdoor groups. Pair outdoor groups with Turn Off Only at Night under When Everyone Is Away so evening away securing leaves them on.",
           "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
           "contact_entity_1": "Do not use the garage overhead door.",
           "notify_service": "Notify service or entity names from Developer Tools. One name, or several separated by commas, for example phones_group or phones_group, email_group. Leave off the notify. prefix. Services such as phones_group and notify entities such as email_group are both supported. A notice is sent after every round."
@@ -91,8 +91,8 @@
           "activity_motion": "A recent motion change skips the round, including indoor cameras if you add them.",
           "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
           "include_activity_lights": "Turns off every monitored light when a round runs, unless a light changed during the quiet period.",
-          "keep_on_lights": "Stays on even when the checkbox above is selected. Use this for bedrooms and lamps.",
-          "turn_off_entities": "Extra lights or switches to turn off, such as a coffee maker or 3D printer. Do not add strips that should stay on.",
+          "keep_on_lights": "Stays on for every round, including night. Use this for bedrooms and lamps. Different from Turn Off Only at Night under When Everyone Is Away.",
+          "turn_off_entities": "Extra lights or switches turned off on a secure round, such as a coffee maker or outdoor groups. Pair outdoor groups with Turn Off Only at Night under When Everyone Is Away so evening away securing leaves them on.",
           "lock_entity_1": "Locked only if this lock is unlocked and the contact below is closed.",
           "contact_entity_1": "Do not use the garage overhead door.",
           "notify_service": "Notify service or entity names from Developer Tools. One name, or several separated by commas, for example phones_group or phones_group, email_group. Leave off the notify. prefix. Services such as phones_group and notify entities such as email_group are both supported. A notice is sent after every round."
@@ -139,7 +139,7 @@
             "data": {
               "away_enabled": "Secure When Everyone Is Away",
               "away_people": "People Who Must Be Away",
-              "away_keep_on_lights": "Lights to Keep On When Away",
+              "away_keep_on_lights": "Turn Off Only at Night",
               "away_alarm": "Alarm Panel",
               "away_alarm_mode": "Arm Mode",
               "presence_simulation_switch": "Presence Simulation Switch"
@@ -147,7 +147,7 @@
             "data_description": {
               "away_enabled": "When on, Night Watchman waits for the quiet period after the last person leaves, runs one secure round, then can arm an alarm and start Presence Simulation.",
               "away_people": "Every person here must be away before the secure round runs.",
-              "away_keep_on_lights": "Still turned off during night rounds. Left alone on the away secure round so outdoor schedules can keep the yard lit until they turn off.",
+              "away_keep_on_lights": "Also list these under Other Lights/Devices to Turn Off (or Monitored Lights). Away securing leaves them on. Night rounds still turn them off. Use for outdoor groups such as Front Yard and Backyard.",
               "away_alarm": "Optional. Armed after a successful secure round. Disarmed when someone comes home only if Night Watchman armed it.",
               "away_alarm_mode": "How to arm the panel after the secure round. Away is usual when everyone has left.",
               "presence_simulation_switch": "Optional. Turned on after that secure round. Turned off when someone comes home. Night rounds are skipped while everyone is away."

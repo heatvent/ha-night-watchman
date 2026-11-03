@@ -24,7 +24,7 @@ A round proceeds when motion sensors and doors have been quiet. A light that is 
 
 - Turns off monitored lights that are still on (when that checkbox is selected), plus any extra lights or switches you picked, such as a coffee maker. The entity must leave `on` before that counts. A light that stays on is **Turn off failed**.
 - Leaves **Lights to Keep On** alone (bedrooms, lamps). Recent light activity also leaves lights on for that round.
-- On the away secure round only, also leaves **Lights to Keep On When Away** alone (outdoor lights). Night rounds still turn those off.
+- On the away secure round only, leaves **Turn Off Only at Night** alone (outdoor groups). Night rounds still turn those off.
 - Locks each selected door when its contact is closed and the lock is not already locked. Jammed, unlocking, unknown, and unavailable locks are tried. A lock already moving to locked is waited on.
 - Calls lock once, waits, then tries one more time. Success is the lock entity reporting **locked**. Anything else is **Lock failed** and includes the state when it was not simply unlocked.
 - Reports an open door in the notice and does not lock it. Nothing is closed. A lock whose contact is unavailable is a lock failure unless that lock already reports locked.
@@ -44,7 +44,7 @@ When **Secure When Everyone Is Away** is on:
 
 1. You pick the people who must all be away. Home and unknown block the away path. Any other person state counts as away, including a named zone such as Work.
 2. When the last of those people leaves, Night Watchman waits out the quiet period. If Home Assistant restarts and the house is already quiet, it waits only the time still remaining (at least one minute), not a fresh full period.
-3. It runs **one** secure round. Motion or a door change skips it. A recent light change also skips this away round, unlike a night round. Lights listed under **Lights to Keep On When Away** stay on and do not count as activity for that wait.
+3. It runs **one** secure round. Motion or a door change skips it. A recent light change also skips this away round, unlike a night round. Lights listed under **Turn Off Only at Night** stay on and do not count as activity for that wait.
 4. A skip waits for the remaining quiet time and tries again. A lock failure or a door left open does not count as secured, does not arm the alarm, and does not start Presence Simulation. It retries in 15 minutes and does not repeat the same notice.
 5. After a round with no open door and no failed lock, if you set an alarm panel, that panel is armed (default mode: Away). Arming is confirmed before the notice is sent.
 6. After that same successful round, if you set a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch, that switch is turned **on**.
@@ -98,7 +98,7 @@ Night Watchman is in the default HACS list.
 
 To install before it shows in that list, add a custom repository: **HACS → Integrations → ⋮ → Custom repositories**, URL `https://github.com/heatvent/ha-night-watchman`, category **Integration**.
 
-HACS follows **GitHub Releases** (`v1.0.24`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.25`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -120,12 +120,12 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Monitored Motion Sensors | A recent motion change skips the round. Indoor cameras belong here if you want them counted. |
 | Monitored Doors | A recent open or close skips the round. This list does not lock or close anything. |
 | Turn Off All Monitored Lights | Turns off the monitored lights when a secure round runs. |
-| Lights to Keep On | Stays on for every round, including night. |
-| Other Lights/Devices to Turn Off | Extra lights or switches (coffee maker, 3D printer). Do not add strips that should stay on. |
+| Lights to Keep On | Stays on for every round, including night (bedrooms, lamps). Different from Turn Off Only at Night. |
+| Other Lights/Devices to Turn Off | Extra lights or switches turned off on a secure round (coffee maker, outdoor groups). Pair outdoor groups with **Turn Off Only at Night**. |
 | Doors to Lock | Up to four lock and contact pairs. Lock only if unlocked and the contact is closed. |
 | Secure When Everyone Is Away | Off by default. When on, people leaving triggers one secure round after the quiet period. |
 | People Who Must Be Away | Used only when the box above is on. Home or unknown blocks the away path. A named zone counts as away. |
-| Lights to Keep On When Away | Still turned off during night rounds. Left alone on the away secure round (use for Outdoor Lights). |
+| Turn Off Only at Night | Under **When Everyone Is Away**. Away securing leaves these on; night rounds still turn them off. Also list them under Other Lights/Devices to Turn Off. |
 | Alarm Panel | Optional. Armed after a successful away secure round. Disarmed when someone comes home only if Night Watchman armed it, including after a restart. No code is sent. |
 | Arm Mode | Away, Home, Night, or Vacation. Default Away. Prefer Away. Only that armed state counts as “already secured” for skipping night rounds. |
 | Presence Simulation Switch | Optional. Turned on after a successful away secure round. Turned off when someone comes home. |
@@ -147,4 +147,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.24` is tag `v1.0.24`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.25` is tag `v1.0.25`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
