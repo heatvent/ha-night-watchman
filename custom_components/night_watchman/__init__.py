@@ -721,13 +721,14 @@ async def _run_round(
     """Run one round and return skipped, all clear, or what changed. The caller notifies."""
     options = _settings(entry)
     quiet = timedelta(minutes=_positive_int(options.get(CONF_QUIET_MINUTES), 45))
-    away_keep = set(_home_mode_only_lights(options)) if for_away else set()
+    # Keep-on-when-away lights and devices are turn-off lists only — never activity.
+    home_only = set(_home_mode_only_lights(options))
     if enforce_quiet:
         occupied = _recent_activity_names(
             hass, _activity_entities(options, include_lights=False), quiet, now, runtime
         )
         monitored = [
-            entity_id for entity_id in _monitored_lights(options) if entity_id not in away_keep
+            entity_id for entity_id in _monitored_lights(options) if entity_id not in home_only
         ]
         light_activity = _recent_activity_names(hass, monitored, quiet, now, runtime)
         if occupied or (light_activity and not lock_when_only_lights_active):
@@ -811,7 +812,7 @@ async def _run_round(
             else:
                 turn_off_failed.append(state.name or entity_id)
         if for_away:
-            for entity_id in away_keep:
+            for entity_id in home_only:
                 state = hass.states.get(entity_id)
                 if state is not None and state.state == STATE_ON:
                     left_on_away.append(state.name or entity_id)

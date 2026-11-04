@@ -22,9 +22,9 @@ A round proceeds when motion sensors and doors have been quiet. A light that is 
 
 ### What a secure round does
 
-- Turns off each category when its own switch is on: **Home and Away Mode** lights, **Home Mode Only** lights (night rounds only), and **Monitored Devices**. The entity must leave `on` before that counts. A light or switch that stays on is **Turn off failed**.
-- Leaves **Lights to Keep On** alone (bedrooms, lamps). Recent Home and Away light activity also leaves those lights on for that round.
-- On the away secure round, **Home Mode Only** lights always stay on so outdoor schedules can keep the yard lit.
+- Turns off each category when its own switch is on: **Monitored Lights**, **Lights to Leave On When Away** (night rounds only), and **Additional Devices to Turn Off**. The entity must leave `on` before that counts. A light or switch that stays on is **Turn off failed**.
+- Leaves **Lights to Keep On** alone (bedrooms, lamps). Recent monitored-light activity also leaves those lights on for that round.
+- On the away secure round, **Lights to Leave On When Away** always stay on so outdoor schedules can keep the yard lit. Those lights and additional devices are never used for quiet/activity checks.
 - Locks each selected door when its contact is closed and the lock is not already locked. Jammed, unlocking, unknown, and unavailable locks are tried. A lock already moving to locked is waited on.
 - Calls lock once, waits, then tries one more time. Success is the lock entity reporting **locked**. Anything else is **Lock failed** and includes the state when it was not simply unlocked.
 - Reports an open door in the notice and does not lock it. Nothing is closed. A lock whose contact is unavailable is a lock failure unless that lock already reports locked.
@@ -44,7 +44,7 @@ When **Secure When Everyone Is Away** is on:
 
 1. You pick the people who must all be away. Home and unknown block the away path. Any other person state counts as away, including a named zone such as Work.
 2. When the last of those people leaves, Night Watchman waits out the quiet period. If Home Assistant restarts and the house is already quiet, it waits only the time still remaining (at least one minute), not a fresh full period.
-3. It runs **one** secure round. Motion or a door change skips it. A recent Home and Away light change also skips this away round, unlike a night round. **Home Mode Only** lights stay on and do not count as activity for that wait.
+3. It runs **one** secure round. Motion or a door change skips it. A recent monitored-light change also skips this away round, unlike a night round. **Lights to Leave On When Away** stay on and do not count as activity for that wait.
 4. A skip waits for the remaining quiet time and tries again. A lock failure or a door left open does not count as secured, does not arm the alarm, and does not start Presence Simulation. It retries in 15 minutes and does not repeat the same notice.
 5. After a round with no open door and no failed lock, if you set an alarm panel, that panel is armed (default mode: Away). Arming is confirmed before the notice is sent.
 6. After that same successful round, if you set a [Presence Simulation](https://github.com/slashback100/presence_simulation) switch, that switch is turned **on**.
@@ -98,7 +98,7 @@ Night Watchman is in the default HACS list.
 
 To install before it shows in that list, add a custom repository: **HACS → Integrations → ⋮ → Custom repositories**, URL `https://github.com/heatvent/ha-night-watchman`, category **Integration**.
 
-HACS follows **GitHub Releases** (`v1.0.26`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.27`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -116,15 +116,15 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Minutes between rounds | How often a night round is attempted inside that window. Default 60. |
 | Quiet period | How long monitored devices must stay unchanged before a round proceeds. Default 45 minutes. Also used after the last person leaves for the away path. |
 | Notify service | Where notices go. One name or a comma-separated list of notify services or entities. Leave off `notify.`. Example: `phones_group, email_group`. |
-| Monitored Lights - Home and Away Mode | Indoor lights. Activity can skip or defer a round. |
-| Turn Off Home and Away Lights | Turns those lights off on night and away rounds. |
+| Monitored Lights | Indoor lights used for quiet/activity. |
+| Turn Off Monitored Lights | Turns those lights off on night and away rounds. |
+| Lights to Keep On | Never turned off (bedrooms, lamps). |
+| Lights to Leave On When Away | Outdoor groups such as Front Yard and Backyard. Not activity. Left alone when everyone leaves. |
+| Turn Off at Night | Turns those lights off on night rounds only. |
+| Additional Devices to Turn Off | Switches such as a coffee maker or 3D printer. Not activity. |
+| Turn Off Additional Devices | Turns those switches off on every secure round. |
 | Monitored Motion Sensors | A recent motion change skips the round. Indoor cameras belong here if you want them counted. |
 | Monitored Doors | A recent open or close skips the round. This list does not lock or close anything. |
-| Lights to Keep On | Never turned off (bedrooms, lamps). |
-| Monitored Lights - Home Mode Only | Outdoor groups such as Front Yard and Backyard. Left alone when everyone leaves. |
-| Turn Off Home Mode Only Lights | Turns those lights off on night rounds only. |
-| Monitored Devices | Switches such as a coffee maker or 3D printer. Not for lights. |
-| Turn Off Monitored Devices | Turns those switches off on every secure round. |
 | Doors to Lock | Up to four lock and contact pairs. Lock only if unlocked and the contact is closed. |
 | Secure When Everyone Is Away | Off by default. When on, people leaving triggers one secure round after the quiet period. |
 | People Who Must Be Away | Used only when the box above is on. Home or unknown blocks the away path. A named zone counts as away. |
@@ -149,4 +149,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.26` is tag `v1.0.26`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.27` is tag `v1.0.27`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
