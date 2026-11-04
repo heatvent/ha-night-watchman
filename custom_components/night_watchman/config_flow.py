@@ -111,12 +111,6 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="light", multiple=True)
             ),
-            vol.Optional(
-                CONF_LEAVE_ON_WHEN_AWAY,
-                default=_home_mode_only_default(defaults),
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="light", multiple=True)
-            ),
             vol.Required(
                 CONF_TURN_OFF_AT_NIGHT,
                 default=_bool_default(
@@ -230,6 +224,12 @@ def _away_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
         vol.Optional(CONF_AWAY_PEOPLE, default=people_default or []): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="person", multiple=True)
         ),
+        vol.Optional(
+            CONF_LEAVE_ON_WHEN_AWAY,
+            default=_home_mode_only_default(defaults),
+        ): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="light", multiple=True)
+        ),
         alarm_field: selector.EntitySelector(
             selector.EntitySelectorConfig(domain="alarm_control_panel")
         ),
@@ -280,9 +280,15 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     people = away.get(CONF_AWAY_PEOPLE, data.get(CONF_AWAY_PEOPLE, []))
     if not isinstance(people, list):
         people = []
-    keep_away = data.get(
+    keep_away = away.get(
         CONF_LEAVE_ON_WHEN_AWAY,
-        data.get(LEGACY_AWAY_KEEP_ON_LIGHTS, away.get(LEGACY_AWAY_KEEP_ON_LIGHTS, [])),
+        data.get(
+            CONF_LEAVE_ON_WHEN_AWAY,
+            data.get(
+                LEGACY_AWAY_KEEP_ON_LIGHTS,
+                away.get(LEGACY_AWAY_KEEP_ON_LIGHTS, []),
+            ),
+        ),
     )
     if not isinstance(keep_away, list):
         keep_away = []
@@ -327,6 +333,7 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     data["when_everyone_away"] = {
         CONF_AWAY_ENABLED: enabled,
         CONF_AWAY_PEOPLE: data[CONF_AWAY_PEOPLE],
+        CONF_LEAVE_ON_WHEN_AWAY: data[CONF_LEAVE_ON_WHEN_AWAY],
         CONF_AWAY_ALARM: alarm,
         CONF_AWAY_ALARM_MODE: mode,
         CONF_PRESENCE_SIMULATION: presence,

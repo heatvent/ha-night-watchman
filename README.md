@@ -98,7 +98,7 @@ Night Watchman is in the default HACS list.
 
 To install before it shows in that list, add a custom repository: **HACS → Integrations → ⋮ → Custom repositories**, URL `https://github.com/heatvent/ha-night-watchman`, category **Integration**.
 
-HACS follows **GitHub Releases** (`v1.0.28`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.29`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -119,8 +119,7 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Monitored Lights | Indoor lights used for quiet/activity. |
 | Turn Off Monitored Lights | Turns those lights off on night and away rounds. |
 | Lights to Keep On | Never turned off (bedrooms, lamps). |
-| Lights to Leave On When Away | Outdoor groups such as Front Yard and Backyard. Not activity. Left alone when everyone leaves. |
-| Turn Off at Night | Turns those lights off on night rounds only. |
+| Turn Off at Night | Turns Lights to Leave On When Away off on night rounds only. Away securing always leaves them on. |
 | Additional Devices to Turn Off | Switches such as a coffee maker or 3D printer. Not activity. |
 | Turn Off Additional Devices | Turns those switches off on every secure round. |
 | Monitored Motion Sensors | A recent motion change skips the round. Indoor cameras belong here if you want them counted. |
@@ -128,6 +127,7 @@ Copy only `custom_components/night_watchman` into your Home Assistant `custom_co
 | Doors to Lock | Up to four lock and contact pairs. Lock only if unlocked and the contact is closed. |
 | Secure When Everyone Is Away | Off by default. When on, people leaving triggers one secure round after the quiet period. |
 | People Who Must Be Away | Used only when the box above is on. Home or unknown blocks the away path. A named zone counts as away. |
+| Lights to Leave On When Away | In When Everyone Is Away. Outdoor groups such as Front Yard and Backyard. Not activity. Left alone when everyone leaves. |
 | Alarm Panel | Optional. Armed after a successful away secure round. Disarmed when someone comes home only if Night Watchman armed it, including after a restart. No code is sent. |
 | Arm Mode | Away, Home, Night, or Vacation. Default Away. Prefer Away. Only that armed state counts as “already secured” for skipping night rounds. |
 | Presence Simulation Switch | Optional. Turned on after a successful away secure round. Turned off when someone comes home. |
@@ -149,4 +149,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.28` is tag `v1.0.28`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.29` is tag `v1.0.29`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.

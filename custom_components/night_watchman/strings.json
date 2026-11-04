@@ -18,7 +18,6 @@
           "activity_doors": "Monitored Doors",
           "include_activity_lights": "Turn Off Monitored Lights",
           "keep_on_lights": "Lights to Keep On",
-          "leave_on_when_away": "Lights to Leave On When Away",
           "turn_off_at_night": "Turn Off at Night",
           "additional_devices": "Additional Devices to Turn Off",
           "turn_off_additional_devices": "Turn Off Additional Devices",
@@ -52,6 +51,7 @@
             "data": {
               "away_enabled": "Secure When Everyone Is Away",
               "away_people": "People Who Must Be Away",
+              "leave_on_when_away": "Lights to Leave On When Away",
               "away_alarm": "Alarm Panel",
               "away_alarm_mode": "Arm Mode",
               "presence_simulation_switch": "Presence Simulation Switch"
@@ -59,6 +59,7 @@
             "data_description": {
               "away_enabled": "When on, Night Watchman waits for the quiet period after the last person leaves, runs one secure round, then can arm an alarm and start Presence Simulation.",
               "away_people": "Every person here must be away before the secure round runs.",
+              "leave_on_when_away": "Not used for activity. Outdoor lights such as Front Yard and Backyard. Left alone when everyone leaves; night rounds can still turn them off.",
               "away_alarm": "Optional. Armed after a successful secure round. Disarmed when someone comes home only if Night Watchman armed it.",
               "away_alarm_mode": "How to arm the panel after the secure round. Away is usual when everyone has left.",
               "presence_simulation_switch": "Optional. Turned on after that secure round. Turned off when someone comes home. Night rounds are skipped while everyone is away."
@@ -71,7 +72,6 @@
           "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
           "include_activity_lights": "Turns off every Monitored Light when a round runs, unless a light changed during the quiet period.",
           "keep_on_lights": "Never turned off. Use this for bedrooms and lamps.",
-          "leave_on_when_away": "Not used for activity. Outdoor lights such as Front Yard and Backyard. Left alone when everyone leaves; night rounds can still turn them off.",
           "turn_off_at_night": "Turns Lights to Leave On When Away off during night rounds. Away securing always leaves them on.",
           "additional_devices": "Not used for activity. Switches such as a coffee maker or 3D printer. Do not put lights here.",
           "turn_off_additional_devices": "Turns off every Additional Device when a secure round runs.",
@@ -96,7 +96,6 @@
           "activity_doors": "A recent open or close skips the round. This does not lock or close the door.",
           "include_activity_lights": "Turns off every Monitored Light when a round runs, unless a light changed during the quiet period.",
           "keep_on_lights": "Never turned off. Use this for bedrooms and lamps.",
-          "leave_on_when_away": "Not used for activity. Outdoor lights such as Front Yard and Backyard. Left alone when everyone leaves; night rounds can still turn them off.",
           "turn_off_at_night": "Turns Lights to Leave On When Away off during night rounds. Away securing always leaves them on.",
           "additional_devices": "Not used for activity. Switches such as a coffee maker or 3D printer. Do not put lights here.",
           "turn_off_additional_devices": "Turns off every Additional Device when a secure round runs.",
@@ -115,7 +114,6 @@
           "activity_doors": "Monitored Doors",
           "include_activity_lights": "Turn Off Monitored Lights",
           "keep_on_lights": "Lights to Keep On",
-          "leave_on_when_away": "Lights to Leave On When Away",
           "turn_off_at_night": "Turn Off at Night",
           "additional_devices": "Additional Devices to Turn Off",
           "turn_off_additional_devices": "Turn Off Additional Devices",
@@ -149,6 +147,7 @@
             "data": {
               "away_enabled": "Secure When Everyone Is Away",
               "away_people": "People Who Must Be Away",
+              "leave_on_when_away": "Lights to Leave On When Away",
               "away_alarm": "Alarm Panel",
               "away_alarm_mode": "Arm Mode",
               "presence_simulation_switch": "Presence Simulation Switch"
@@ -156,6 +155,7 @@
             "data_description": {
               "away_enabled": "When on, Night Watchman waits for the quiet period after the last person leaves, runs one secure round, then can arm an alarm and start Presence Simulation.",
               "away_people": "Every person here must be away before the secure round runs.",
+              "leave_on_when_away": "Not used for activity. Outdoor lights such as Front Yard and Backyard. Left alone when everyone leaves; night rounds can still turn them off.",
               "away_alarm": "Optional. Armed after a successful secure round. Disarmed when someone comes home only if Night Watchman armed it.",
               "away_alarm_mode": "How to arm the panel after the secure round. Away is usual when everyone has left.",
               "presence_simulation_switch": "Optional. Turned on after that secure round. Turned off when someone comes home. Night rounds are skipped while everyone is away."
