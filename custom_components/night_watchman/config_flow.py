@@ -30,6 +30,8 @@ from .const import (
     CONF_DOORS_TO_LOCK,
     CONF_END,
     CONF_INCLUDE_ACTIVITY_LIGHTS,
+    CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS,
+    CONF_INCLUDE_MONITORED_DEVICES,
     CONF_INTERVAL,
     CONF_KEEP_ON_LIGHTS,
     CONF_MONITOR_ALL,
@@ -96,6 +98,34 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="light", multiple=True)
             ),
+            vol.Required(
+                CONF_INCLUDE_ACTIVITY_LIGHTS,
+                default=defaults.get(CONF_INCLUDE_ACTIVITY_LIGHTS, True),
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                CONF_KEEP_ON_LIGHTS, default=defaults.get(CONF_KEEP_ON_LIGHTS, [])
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="light", multiple=True)
+            ),
+            vol.Optional(
+                CONF_AWAY_KEEP_ON_LIGHTS,
+                default=_home_mode_only_default(defaults),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="light", multiple=True)
+            ),
+            vol.Required(
+                CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS,
+                default=defaults.get(CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS, True),
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                CONF_TURN_OFF_ENTITIES, default=_monitored_devices_default(defaults)
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="switch", multiple=True)
+            ),
+            vol.Required(
+                CONF_INCLUDE_MONITORED_DEVICES,
+                default=defaults.get(CONF_INCLUDE_MONITORED_DEVICES, True),
+            ): selector.BooleanSelector(),
             vol.Optional(
                 CONF_ACTIVITY_MOTION, default=defaults.get(CONF_ACTIVITY_MOTION, [])
             ): selector.EntitySelector(
@@ -112,20 +142,6 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
                     multiple=True,
                 )
             ),
-            vol.Required(
-                CONF_INCLUDE_ACTIVITY_LIGHTS,
-                default=defaults.get(CONF_INCLUDE_ACTIVITY_LIGHTS, True),
-            ): selector.BooleanSelector(),
-            vol.Optional(
-                CONF_KEEP_ON_LIGHTS, default=defaults.get(CONF_KEEP_ON_LIGHTS, [])
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="light", multiple=True)
-            ),
-            vol.Optional(
-                CONF_TURN_OFF_ENTITIES, default=defaults.get(CONF_TURN_OFF_ENTITIES, [])
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain=["light", "switch"], multiple=True)
-            ),
             vol.Required(CONF_DOORS_TO_LOCK): section(
                 vol.Schema(_lock_slot_fields(defaults)),
                 {"collapsed": False},
@@ -138,14 +154,25 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
     )
 
 
+def _home_mode_only_default(defaults: dict[str, Any]) -> list[str]:
+    nested = defaults.get("when_everyone_away") if isinstance(defaults.get("when_everyone_away"), dict) else {}
+    value = defaults.get(CONF_AWAY_KEEP_ON_LIGHTS, nested.get(CONF_AWAY_KEEP_ON_LIGHTS, []))
+    return value if isinstance(value, list) else []
+
+
+def _monitored_devices_default(defaults: dict[str, Any]) -> list[str]:
+    """Keep switches only. Older installs may still have lights in this list."""
+    value = defaults.get(CONF_TURN_OFF_ENTITIES, [])
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item.startswith("switch.")]
+
+
 def _away_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
     """Optional away path: people who must leave, alarm, and Presence Simulation handoff."""
     nested = defaults.get("when_everyone_away") if isinstance(defaults.get("when_everyone_away"), dict) else {}
     enabled_default = nested.get(CONF_AWAY_ENABLED, defaults.get(CONF_AWAY_ENABLED, False))
     people_default = nested.get(CONF_AWAY_PEOPLE, defaults.get(CONF_AWAY_PEOPLE, []))
-    keep_away_default = nested.get(
-        CONF_AWAY_KEEP_ON_LIGHTS, defaults.get(CONF_AWAY_KEEP_ON_LIGHTS, [])
-    )
     presence_default = nested.get(CONF_PRESENCE_SIMULATION, defaults.get(CONF_PRESENCE_SIMULATION))
     alarm_default = nested.get(CONF_AWAY_ALARM, defaults.get(CONF_AWAY_ALARM))
     mode_default = nested.get(CONF_AWAY_ALARM_MODE, defaults.get(CONF_AWAY_ALARM_MODE, DEFAULT_AWAY_ALARM_MODE))
@@ -165,11 +192,6 @@ def _away_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
         vol.Required(CONF_AWAY_ENABLED, default=bool(enabled_default)): selector.BooleanSelector(),
         vol.Optional(CONF_AWAY_PEOPLE, default=people_default or []): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="person", multiple=True)
-        ),
-        vol.Optional(
-            CONF_AWAY_KEEP_ON_LIGHTS, default=keep_away_default or []
-        ): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=["light", "switch"], multiple=True)
         ),
         alarm_field: selector.EntitySelector(
             selector.EntitySelectorConfig(domain="alarm_control_panel")
@@ -221,9 +243,12 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     people = away.get(CONF_AWAY_PEOPLE, data.get(CONF_AWAY_PEOPLE, []))
     if not isinstance(people, list):
         people = []
-    keep_away = away.get(CONF_AWAY_KEEP_ON_LIGHTS, data.get(CONF_AWAY_KEEP_ON_LIGHTS, []))
+    keep_away = data.get(CONF_AWAY_KEEP_ON_LIGHTS, away.get(CONF_AWAY_KEEP_ON_LIGHTS, []))
     if not isinstance(keep_away, list):
         keep_away = []
+    devices = data.get(CONF_TURN_OFF_ENTITIES, [])
+    if not isinstance(devices, list):
+        devices = []
     presence = away.get(CONF_PRESENCE_SIMULATION) or data.get(CONF_PRESENCE_SIMULATION)
     presence = presence if isinstance(presence, str) and presence.startswith("switch.") else None
     alarm = away.get(CONF_AWAY_ALARM) or data.get(CONF_AWAY_ALARM)
@@ -233,9 +258,10 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     data[CONF_AWAY_ENABLED] = enabled
     data[CONF_AWAY_PEOPLE] = [item for item in people if isinstance(item, str) and item]
     data[CONF_AWAY_KEEP_ON_LIGHTS] = [
-        item
-        for item in keep_away
-        if isinstance(item, str) and item.split(".", 1)[0] in {"light", "switch"}
+        item for item in keep_away if isinstance(item, str) and item.startswith("light.")
+    ]
+    data[CONF_TURN_OFF_ENTITIES] = [
+        item for item in devices if isinstance(item, str) and item.startswith("switch.")
     ]
     data[CONF_PRESENCE_SIMULATION] = presence
     data[CONF_AWAY_ALARM] = alarm

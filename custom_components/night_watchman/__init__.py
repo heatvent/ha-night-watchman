@@ -36,6 +36,8 @@ from .const import (
     CONF_DOORS_TO_LOCK,
     CONF_END,
     CONF_INCLUDE_ACTIVITY_LIGHTS,
+    CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS,
+    CONF_INCLUDE_MONITORED_DEVICES,
     CONF_INTERVAL,
     CONF_KEEP_ON_LIGHTS,
     CONF_LOCK_ENTITY,
@@ -200,22 +202,40 @@ def _activity_entities(options: dict[str, Any], *, include_lights: bool = True) 
     return [entity_id for entity_id in entities if not entity_id.startswith("light.")]
 
 
-def _away_keep_on_lights(options: dict[str, Any]) -> list[str]:
-    """Lights left alone on the away secure round, but still turned off at night."""
+def _home_mode_only_lights(options: dict[str, Any]) -> list[str]:
+    """Lights turned off on night rounds only. Away securing leaves them alone."""
+    if CONF_AWAY_KEEP_ON_LIGHTS in options:
+        return _unique(_as_list(options.get(CONF_AWAY_KEEP_ON_LIGHTS)))
     section = options.get("when_everyone_away")
     if isinstance(section, dict) and CONF_AWAY_KEEP_ON_LIGHTS in section:
         return _unique(_as_list(section.get(CONF_AWAY_KEEP_ON_LIGHTS)))
-    return _unique(_as_list(options.get(CONF_AWAY_KEEP_ON_LIGHTS)))
+    return []
+
+
+def _monitored_devices(options: dict[str, Any]) -> list[str]:
+    """Switches such as a coffee maker. Lights belong in the monitored light lists."""
+    return [
+        entity_id
+        for entity_id in _unique(_as_list(options.get(CONF_TURN_OFF_ENTITIES)))
+        if entity_id.startswith("switch.")
+    ]
 
 
 def _turn_off_entities(options: dict[str, Any], *, for_away: bool = False) -> list[str]:
     entities: list[str] = []
     if options.get(CONF_INCLUDE_ACTIVITY_LIGHTS, True):
         entities.extend(_monitored_lights(options))
-    entities.extend(_as_list(options.get(CONF_TURN_OFF_ENTITIES)))
+    if not for_away and options.get(CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS, True):
+        entities.extend(_home_mode_only_lights(options))
+    if options.get(CONF_INCLUDE_MONITORED_DEVICES, True):
+        entities.extend(_monitored_devices(options))
+        # Older installs may still list lights under turn_off_entities.
+        for entity_id in _as_list(options.get(CONF_TURN_OFF_ENTITIES)):
+            if entity_id.startswith("light."):
+                entities.append(entity_id)
     keep = set(_as_list(options.get(CONF_KEEP_ON_LIGHTS)))
     if for_away:
-        keep.update(_away_keep_on_lights(options))
+        keep.update(_home_mode_only_lights(options))
     return [
         entity_id
         for entity_id in _unique(entities)
@@ -674,7 +694,7 @@ def _remaining_quiet_seconds(hass: HomeAssistant, options: dict[str, Any], runti
     """Seconds still needed before the house counts as quiet. Zero when it already is."""
     quiet_seconds = _positive_int(options.get(CONF_QUIET_MINUTES), 45) * 60
     now = dt_util.as_local(dt_util.utcnow())
-    ignore = set(_away_keep_on_lights(options))
+    ignore = set(_home_mode_only_lights(options))
     latest: datetime | None = None
     for entity_id in _activity_entities(options):
         if entity_id in ignore:
@@ -701,7 +721,7 @@ async def _run_round(
     """Run one round and return skipped, all clear, or what changed. The caller notifies."""
     options = _settings(entry)
     quiet = timedelta(minutes=_positive_int(options.get(CONF_QUIET_MINUTES), 45))
-    away_keep = set(_away_keep_on_lights(options)) if for_away else set()
+    away_keep = set(_home_mode_only_lights(options)) if for_away else set()
     if enforce_quiet:
         occupied = _recent_activity_names(
             hass, _activity_entities(options, include_lights=False), quiet, now, runtime
