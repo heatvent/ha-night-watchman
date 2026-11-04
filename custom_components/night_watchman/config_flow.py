@@ -22,26 +22,30 @@ from .const import (
     CONF_ACTIVITY_DOORS,
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
+    CONF_ADDITIONAL_DEVICES,
     CONF_AWAY_ALARM,
     CONF_AWAY_ALARM_MODE,
     CONF_AWAY_ENABLED,
-    CONF_AWAY_KEEP_ON_LIGHTS,
     CONF_AWAY_PEOPLE,
     CONF_DOORS_TO_LOCK,
     CONF_END,
     CONF_INCLUDE_ACTIVITY_LIGHTS,
-    CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS,
-    CONF_INCLUDE_MONITORED_DEVICES,
     CONF_INTERVAL,
     CONF_KEEP_ON_LIGHTS,
+    CONF_LEAVE_ON_WHEN_AWAY,
     CONF_MONITOR_ALL,
     CONF_NOTIFY_SERVICE,
     CONF_PRESENCE_SIMULATION,
     CONF_QUIET_MINUTES,
     CONF_START,
-    CONF_TURN_OFF_ENTITIES,
+    CONF_TURN_OFF_ADDITIONAL_DEVICES,
+    CONF_TURN_OFF_AT_NIGHT,
     DEFAULT_AWAY_ALARM_MODE,
     DOMAIN,
+    LEGACY_AWAY_KEEP_ON_LIGHTS,
+    LEGACY_INCLUDE_HOME_MODE_ONLY_LIGHTS,
+    LEGACY_INCLUDE_MONITORED_DEVICES,
+    LEGACY_TURN_OFF_ENTITIES,
     LOCK_SLOTS,
 )
 
@@ -108,23 +112,31 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
                 selector.EntitySelectorConfig(domain="light", multiple=True)
             ),
             vol.Optional(
-                CONF_AWAY_KEEP_ON_LIGHTS,
+                CONF_LEAVE_ON_WHEN_AWAY,
                 default=_home_mode_only_default(defaults),
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="light", multiple=True)
             ),
             vol.Required(
-                CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS,
-                default=defaults.get(CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS, True),
+                CONF_TURN_OFF_AT_NIGHT,
+                default=_bool_default(
+                    defaults,
+                    CONF_TURN_OFF_AT_NIGHT,
+                    LEGACY_INCLUDE_HOME_MODE_ONLY_LIGHTS,
+                ),
             ): selector.BooleanSelector(),
             vol.Optional(
-                CONF_TURN_OFF_ENTITIES, default=_monitored_devices_default(defaults)
+                CONF_ADDITIONAL_DEVICES, default=_monitored_devices_default(defaults)
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="switch", multiple=True)
             ),
             vol.Required(
-                CONF_INCLUDE_MONITORED_DEVICES,
-                default=defaults.get(CONF_INCLUDE_MONITORED_DEVICES, True),
+                CONF_TURN_OFF_ADDITIONAL_DEVICES,
+                default=_bool_default(
+                    defaults,
+                    CONF_TURN_OFF_ADDITIONAL_DEVICES,
+                    LEGACY_INCLUDE_MONITORED_DEVICES,
+                ),
             ): selector.BooleanSelector(),
             vol.Optional(
                 CONF_ACTIVITY_MOTION, default=defaults.get(CONF_ACTIVITY_MOTION, [])
@@ -154,15 +166,40 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
     )
 
 
+def _nested_away(defaults: dict[str, Any]) -> dict[str, Any]:
+    nested = defaults.get("when_everyone_away")
+    return nested if isinstance(nested, dict) else {}
+
+
+def _first_present(defaults: dict[str, Any], *keys: str, default: Any = None) -> Any:
+    nested = _nested_away(defaults)
+    for key in keys:
+        if key in defaults:
+            return defaults.get(key)
+        if key in nested:
+            return nested.get(key)
+    return default
+
+
+def _bool_default(
+    defaults: dict[str, Any], *keys: str, fallback: bool = True
+) -> bool:
+    value = _first_present(defaults, *keys, default=fallback)
+    return bool(value)
+
+
 def _home_mode_only_default(defaults: dict[str, Any]) -> list[str]:
-    nested = defaults.get("when_everyone_away") if isinstance(defaults.get("when_everyone_away"), dict) else {}
-    value = defaults.get(CONF_AWAY_KEEP_ON_LIGHTS, nested.get(CONF_AWAY_KEEP_ON_LIGHTS, []))
+    value = _first_present(
+        defaults, CONF_LEAVE_ON_WHEN_AWAY, LEGACY_AWAY_KEEP_ON_LIGHTS, default=[]
+    )
     return value if isinstance(value, list) else []
 
 
 def _monitored_devices_default(defaults: dict[str, Any]) -> list[str]:
     """Keep switches only. Older installs may still have lights in this list."""
-    value = defaults.get(CONF_TURN_OFF_ENTITIES, [])
+    value = _first_present(
+        defaults, CONF_ADDITIONAL_DEVICES, LEGACY_TURN_OFF_ENTITIES, default=[]
+    )
     if not isinstance(value, list):
         return []
     return [item for item in value if isinstance(item, str) and item.startswith("switch.")]
@@ -243,10 +280,15 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     people = away.get(CONF_AWAY_PEOPLE, data.get(CONF_AWAY_PEOPLE, []))
     if not isinstance(people, list):
         people = []
-    keep_away = data.get(CONF_AWAY_KEEP_ON_LIGHTS, away.get(CONF_AWAY_KEEP_ON_LIGHTS, []))
+    keep_away = data.get(
+        CONF_LEAVE_ON_WHEN_AWAY,
+        data.get(LEGACY_AWAY_KEEP_ON_LIGHTS, away.get(LEGACY_AWAY_KEEP_ON_LIGHTS, [])),
+    )
     if not isinstance(keep_away, list):
         keep_away = []
-    devices = data.get(CONF_TURN_OFF_ENTITIES, [])
+    devices = data.get(
+        CONF_ADDITIONAL_DEVICES, data.get(LEGACY_TURN_OFF_ENTITIES, [])
+    )
     if not isinstance(devices, list):
         devices = []
     presence = away.get(CONF_PRESENCE_SIMULATION) or data.get(CONF_PRESENCE_SIMULATION)
@@ -257,19 +299,34 @@ def _normalize_submission(user_input: dict[str, Any]) -> dict[str, Any]:
     mode = mode if mode in AWAY_ALARM_MODES else DEFAULT_AWAY_ALARM_MODE
     data[CONF_AWAY_ENABLED] = enabled
     data[CONF_AWAY_PEOPLE] = [item for item in people if isinstance(item, str) and item]
-    data[CONF_AWAY_KEEP_ON_LIGHTS] = [
+    data[CONF_LEAVE_ON_WHEN_AWAY] = [
         item for item in keep_away if isinstance(item, str) and item.startswith("light.")
     ]
-    data[CONF_TURN_OFF_ENTITIES] = [
+    data[CONF_ADDITIONAL_DEVICES] = [
         item for item in devices if isinstance(item, str) and item.startswith("switch.")
     ]
+    if CONF_TURN_OFF_AT_NIGHT not in data and LEGACY_INCLUDE_HOME_MODE_ONLY_LIGHTS in data:
+        data[CONF_TURN_OFF_AT_NIGHT] = bool(data[LEGACY_INCLUDE_HOME_MODE_ONLY_LIGHTS])
+    if (
+        CONF_TURN_OFF_ADDITIONAL_DEVICES not in data
+        and LEGACY_INCLUDE_MONITORED_DEVICES in data
+    ):
+        data[CONF_TURN_OFF_ADDITIONAL_DEVICES] = bool(
+            data[LEGACY_INCLUDE_MONITORED_DEVICES]
+        )
+    for legacy in (
+        LEGACY_AWAY_KEEP_ON_LIGHTS,
+        LEGACY_INCLUDE_HOME_MODE_ONLY_LIGHTS,
+        LEGACY_TURN_OFF_ENTITIES,
+        LEGACY_INCLUDE_MONITORED_DEVICES,
+    ):
+        data.pop(legacy, None)
     data[CONF_PRESENCE_SIMULATION] = presence
     data[CONF_AWAY_ALARM] = alarm
     data[CONF_AWAY_ALARM_MODE] = mode
     data["when_everyone_away"] = {
         CONF_AWAY_ENABLED: enabled,
         CONF_AWAY_PEOPLE: data[CONF_AWAY_PEOPLE],
-        CONF_AWAY_KEEP_ON_LIGHTS: data[CONF_AWAY_KEEP_ON_LIGHTS],
         CONF_AWAY_ALARM: alarm,
         CONF_AWAY_ALARM_MODE: mode,
         CONF_PRESENCE_SIMULATION: presence,

@@ -27,25 +27,29 @@ from .const import (
     CONF_ACTIVITY_ENTITIES,
     CONF_ACTIVITY_LIGHTS,
     CONF_ACTIVITY_MOTION,
+    CONF_ADDITIONAL_DEVICES,
     CONF_AWAY_ALARM,
     CONF_AWAY_ALARM_MODE,
     CONF_AWAY_ENABLED,
-    CONF_AWAY_KEEP_ON_LIGHTS,
     CONF_AWAY_PEOPLE,
     CONF_CONTACT_ENTITY,
     CONF_DOORS_TO_LOCK,
     CONF_END,
     CONF_INCLUDE_ACTIVITY_LIGHTS,
-    CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS,
-    CONF_INCLUDE_MONITORED_DEVICES,
     CONF_INTERVAL,
     CONF_KEEP_ON_LIGHTS,
+    CONF_LEAVE_ON_WHEN_AWAY,
     CONF_LOCK_ENTITY,
     CONF_NOTIFY_SERVICE,
     CONF_PRESENCE_SIMULATION,
     CONF_QUIET_MINUTES,
     CONF_START,
-    CONF_TURN_OFF_ENTITIES,
+    CONF_TURN_OFF_ADDITIONAL_DEVICES,
+    CONF_TURN_OFF_AT_NIGHT,
+    LEGACY_AWAY_KEEP_ON_LIGHTS,
+    LEGACY_INCLUDE_HOME_MODE_ONLY_LIGHTS,
+    LEGACY_INCLUDE_MONITORED_DEVICES,
+    LEGACY_TURN_OFF_ENTITIES,
     DEFAULT_AWAY_ALARM_MODE,
     DOMAIN,
     LOCK_SLOTS,
@@ -202,21 +206,35 @@ def _activity_entities(options: dict[str, Any], *, include_lights: bool = True) 
     return [entity_id for entity_id in entities if not entity_id.startswith("light.")]
 
 
+def _option_value(options: dict[str, Any], *keys: str, default: Any = None) -> Any:
+    """Read the first present option key, including nested when_everyone_away."""
+    for key in keys:
+        if key in options:
+            return options.get(key)
+    section = options.get("when_everyone_away")
+    if isinstance(section, dict):
+        for key in keys:
+            if key in section:
+                return section.get(key)
+    return default
+
+
 def _home_mode_only_lights(options: dict[str, Any]) -> list[str]:
     """Lights turned off on night rounds only. Away securing leaves them alone."""
-    if CONF_AWAY_KEEP_ON_LIGHTS in options:
-        return _unique(_as_list(options.get(CONF_AWAY_KEEP_ON_LIGHTS)))
-    section = options.get("when_everyone_away")
-    if isinstance(section, dict) and CONF_AWAY_KEEP_ON_LIGHTS in section:
-        return _unique(_as_list(section.get(CONF_AWAY_KEEP_ON_LIGHTS)))
-    return []
+    value = _option_value(
+        options, CONF_LEAVE_ON_WHEN_AWAY, LEGACY_AWAY_KEEP_ON_LIGHTS, default=[]
+    )
+    return _unique(_as_list(value))
 
 
 def _monitored_devices(options: dict[str, Any]) -> list[str]:
     """Switches such as a coffee maker. Lights belong in the monitored light lists."""
+    value = _option_value(
+        options, CONF_ADDITIONAL_DEVICES, LEGACY_TURN_OFF_ENTITIES, default=[]
+    )
     return [
         entity_id
-        for entity_id in _unique(_as_list(options.get(CONF_TURN_OFF_ENTITIES)))
+        for entity_id in _unique(_as_list(value))
         if entity_id.startswith("switch.")
     ]
 
@@ -225,12 +243,28 @@ def _turn_off_entities(options: dict[str, Any], *, for_away: bool = False) -> li
     entities: list[str] = []
     if options.get(CONF_INCLUDE_ACTIVITY_LIGHTS, True):
         entities.extend(_monitored_lights(options))
-    if not for_away and options.get(CONF_INCLUDE_HOME_MODE_ONLY_LIGHTS, True):
+    turn_off_at_night = _option_value(
+        options,
+        CONF_TURN_OFF_AT_NIGHT,
+        LEGACY_INCLUDE_HOME_MODE_ONLY_LIGHTS,
+        default=True,
+    )
+    if not for_away and turn_off_at_night:
         entities.extend(_home_mode_only_lights(options))
-    if options.get(CONF_INCLUDE_MONITORED_DEVICES, True):
+    turn_off_devices = _option_value(
+        options,
+        CONF_TURN_OFF_ADDITIONAL_DEVICES,
+        LEGACY_INCLUDE_MONITORED_DEVICES,
+        default=True,
+    )
+    if turn_off_devices:
         entities.extend(_monitored_devices(options))
-        # Older installs may still list lights under turn_off_entities.
-        for entity_id in _as_list(options.get(CONF_TURN_OFF_ENTITIES)):
+        # Older installs may still list lights under the devices field.
+        for entity_id in _as_list(
+            _option_value(
+                options, CONF_ADDITIONAL_DEVICES, LEGACY_TURN_OFF_ENTITIES, default=[]
+            )
+        ):
             if entity_id.startswith("light."):
                 entities.append(entity_id)
     keep = set(_as_list(options.get(CONF_KEEP_ON_LIGHTS)))

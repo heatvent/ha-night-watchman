@@ -98,7 +98,7 @@ Night Watchman is in the default HACS list.
 
 To install before it shows in that list, add a custom repository: **HACS → Integrations → ⋮ → Custom repositories**, URL `https://github.com/heatvent/ha-night-watchman`, category **Integration**.
 
-HACS follows **GitHub Releases** (`v1.0.27`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
+HACS follows **GitHub Releases** (`v1.0.28`, …), not the tip of `main`. After a release, use **⋮ → Update information** if the update is slow to appear.
 
 The HACS store list may show a placeholder icon. That is a HACS limitation. After install, the icon appears under **Settings → Devices & services**.
 
@@ -149,4 +149,4 @@ Developed with [Cursor](https://cursor.com).
 
 ## Updates
 
-Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.27` is tag `v1.0.27`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
+Each release tag is `v` plus the version in `custom_components/night_watchman/manifest.json`. Version `1.0.28` is tag `v1.0.28`. Bump both together. HACS offers the new release. Restart Home Assistant after installing it.
