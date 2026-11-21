@@ -82,7 +82,7 @@ _LOCK_CONFIRM_ATTEMPTS = 20
 _LOCK_CONFIRM_DELAY = 0.5
 _ACTIVE_ROUNDS: set[str] = set()
 
-type WatchmanConfigEntry = ConfigEntry
+type WatchmanConfigEntry = ConfigEntry["NightWatchmanRuntime"]
 
 
 @dataclass
@@ -916,7 +916,7 @@ async def _execute_round(
 async def async_setup_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> bool:
     """Set up one Night Watchman entry."""
     runtime = NightWatchmanRuntime(entry)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
+    entry.runtime_data = runtime
     store: Store[dict[str, Any]] = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
     stored = await store.async_load()
     if isinstance(stored, dict):
@@ -1167,12 +1167,10 @@ async def _reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: WatchmanConfigEntry) -> bool:
     """Unload a config entry."""
-    runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    runtime = getattr(entry, "runtime_data", None)
     if runtime is not None:
         runtime.cancel_away_retry()
     _ACTIVE_ROUNDS.discard(entry.entry_id)
-    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    return unloaded
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
