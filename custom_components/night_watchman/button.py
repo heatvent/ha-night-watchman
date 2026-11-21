@@ -7,7 +7,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
 from .entity import watchman_device
 
 
@@ -17,7 +16,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add the manual round button."""
-    async_add_entities([NightWatchmanRunButton(hass.data[DOMAIN][entry.entry_id])])
+    async_add_entities([NightWatchmanRunButton(entry.runtime_data)])
 
 
 class NightWatchmanRunButton(ButtonEntity):

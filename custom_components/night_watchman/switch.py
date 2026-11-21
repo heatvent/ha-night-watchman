@@ -10,7 +10,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN
 from .entity import watchman_device
 
 
@@ -20,7 +19,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add the pause switch."""
-    async_add_entities([NightWatchmanSwitch(hass.data[DOMAIN][entry.entry_id])])
+    async_add_entities([NightWatchmanSwitch(entry.runtime_data)])
 
 
 class NightWatchmanSwitch(SwitchEntity, RestoreEntity):
