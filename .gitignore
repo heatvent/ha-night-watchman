@@ -5,3 +5,6 @@ __pycache__/
 .env.*
 .DS_Store
 .pytest_cache/
+
+# Cursor editor settings (local only)
+.cursor/

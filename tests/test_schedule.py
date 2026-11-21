@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.night_watchman import (
+from custom_components.night_watchman.helpers import (
     _as_list,
     _last_due_minute,
     _minutes,
